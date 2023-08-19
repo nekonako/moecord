@@ -1,0 +1,72 @@
+[api]
+env = "dev"
+port = 4000
+host = "0.0.0.0"
+timeout = 120
+read_timeout = 120
+idle_timeout = 120
+write_timeout = 120
+
+[postgres]
+port = 5432
+database = ""
+host= ""
+username = ""
+password = ""
+
+# connection pool
+max_open_conn = 30
+max_idle_conn = 10
+conn_max_idle_time = 10
+conn_max_life_time = 10 # in minutes
+
+[redis]
+host = ""
+port = 6479
+username = ""
+password = ""
+database = 0
+
+[apm]
+enable = false
+host = "0.0.0.0:4317"
+log_level = "trace"
+service_name = "moecord"
+
+[oauth]
+redirect_uri = "http://localhost:3001/oauth/"
+
+[oauth.github]
+name = "github"
+auth_url = "https://github.com/login/oauth/authorize"
+client_id = ""
+client_secret = ""
+token_exchange_url = "https://github.com/login/oauth/access_token"
+scope = "read:user"
+
+[oauth.google]
+name = "google"
+auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+client_id = ""
+client_secret = ""
+token_exchange_url = "https://oauth2.googleapis.com/token"
+scope = "https://www.googleapis.com/auth/userinfo.profile"
+
+[cloudinary]
+cloud_name = ""
+api_key = ""
+secret = ""
+
+[nats]
+port = 4222
+host = ""
+username = ""
+password = ""
+
+[websocket]
+host = ""
+port = 
+
+[scylla]
+host= ""
+keyspace = ""
