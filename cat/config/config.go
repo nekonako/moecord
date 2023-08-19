@@ -1,6 +1,10 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"io/ioutil"
+
+	"github.com/spf13/viper"
+)
 
 func New() (*Config, error) {
 
@@ -15,8 +19,30 @@ func New() (*Config, error) {
 		return nil, err
 	}
 
+	privateKey, err := readPublicKey("config/private_key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	publicKey, err := readPublicKey("config/public_key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	config.JWT.PrivateKey = privateKey
+	config.JWT.PublicKey = publicKey
+
 	return &config, nil
 
+}
+
+func readPublicKey(filepath string) (string, error) {
+	keyBytes, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return "", err
+	}
+
+	return string(keyBytes), nil
 }
 
 type Config struct {
@@ -29,6 +55,7 @@ type Config struct {
 	Nats       Nats           `mapstructure:"nats"`
 	Websocket  Websocket      `mapstructure:"websocket"`
 	Scylla     Scylla         `mapstructure:"scylla"`
+	JWT        JWT            `mapstructure:"jwt"`
 }
 
 type Postgres struct {
@@ -103,4 +130,11 @@ type Websocket struct {
 type Scylla struct {
 	Host     string `mapstructure:"host"`
 	Keyspace string `mapstructure:"keyspace"`
+}
+
+type JWT struct {
+	PublicKey            string `mapstructure:"public_key"`
+	PrivateKey           string `mapstructure:"private_key"`
+	AccessTokenDuration  int    `mapstructure:"access_token_duration"`
+	RefreshTokenDuration int    `mapstructure:"refresh_token_duration"`
 }

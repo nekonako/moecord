@@ -4,11 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
+)
+
+var (
+	errFailedTokenExchange = errors.New("failed token exchange")
 )
 
 type CallbackRequest struct {
@@ -39,20 +47,50 @@ type googleTokenExchangeResponse struct {
 	IdToken     string `json:"id_token"`
 }
 
-func (u *UseCase) Callback(input CallbackRequest) (any, error) {
+type response struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (u *UseCase) Callback(input CallbackRequest) (response, error) {
+
+	var (
+		err   error
+		email string
+		r     response
+	)
 
 	switch input.Provider {
 	case "github":
-		return u.githubTokenExchange(input.AuthorizationCode)
+		email, err = u.githubTokenExchange(input.AuthorizationCode)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return r, err
+		}
 	case "google":
-		return u.googleTokenExchange(input.AuthorizationCode)
+		email, err = u.googleTokenExchange(input.AuthorizationCode)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return r, err
+		}
 	default:
-		return nil, errors.New("oauth provider not implemented")
+		return r, errors.New("oauth provider not implemented")
 	}
+
+	id := ulid.Make()
+	accessToken, refreshToken, err := u.generateToken(id, email)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return r, err
+	}
+
+	r.AccessToken = accessToken
+	r.RefreshToken = refreshToken
+	return r, nil
 
 }
 
-func (u *UseCase) githubTokenExchange(authCode string) (githubTokenExchangeResponse, error) {
+func (u *UseCase) githubTokenExchange(authCode string) (string, error) {
 
 	tokenExchange := oauthTokenExchange{
 		ClientID:     u.config.Oauth.Github.ClientID,
@@ -66,14 +104,14 @@ func (u *UseCase) githubTokenExchange(authCode string) (githubTokenExchangeRespo
 	byteTokenExchange, err := json.Marshal(tokenExchange)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
 	}
 
 	c := http.DefaultClient
 	req, err := http.NewRequest(http.MethodPost, tokenExchangeURL, bytes.NewBuffer(byteTokenExchange))
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
@@ -81,20 +119,47 @@ func (u *UseCase) githubTokenExchange(authCode string) (githubTokenExchangeRespo
 	res, err := c.Do(req)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed exchange token, with http status code %d", res.StatusCode))
+		return "", errFailedTokenExchange
 	}
 
-	defer res.Body.Close()
 	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
 	}
 
-	return r, nil
+	ru, err := http.NewRequest(http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+	ru.Header.Set("Authorization", "Bearer "+r.AccessToken)
+
+	res, err = c.Do(ru)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	var user struct {
+		Email string `json:"email"`
+	}
+
+	if err = json.NewDecoder(res.Body).Decode(&user); err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	return user.Email, nil
 
 }
 
-func (u *UseCase) googleTokenExchange(authCode string) (googleTokenExchangeResponse, error) {
+func (u *UseCase) googleTokenExchange(authCode string) (string, error) {
 
 	data := url.Values{}
 	data.Set("client_id", u.config.Oauth.Google.ClientID)
@@ -110,22 +175,74 @@ func (u *UseCase) googleTokenExchange(authCode string) (googleTokenExchangeRespo
 	req, err := http.NewRequest(http.MethodPost, tokenExchangeURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.Do(req)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return r, err
+		return "", err
 	}
 	defer res.Body.Close()
 
-	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
-		log.Error().Msg(err.Error())
-		return r, err
+	if res.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed exchange token, with http status code %d", res.StatusCode))
+		return "", errFailedTokenExchange
 	}
 
-	return r, nil
+	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
 
+	ru, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + r.AccessToken)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	var user struct {
+		Email string `json:"email"`
+	}
+
+	if err = json.NewDecoder(ru.Body).Decode(&user); err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	return user.Email, nil
+
+}
+
+func (u *UseCase) generateToken(id ulid.ULID, email string) (string, string, error) {
+
+	now := time.Now()
+	secretKey := []byte(u.config.JWT.PrivateKey)
+	claims := jwt.MapClaims{
+		"iat":   now.Unix(),
+		"exp":   now.Add(time.Minute * time.Duration(u.config.JWT.AccessTokenDuration)).Unix(),
+		"email": email,
+		"sub":   id,
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	accessTokenString, err := accessToken.SignedString(secretKey)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", "", err
+	}
+
+	refreshTokenClaims := jwt.MapClaims{
+		"exp": now.Add(time.Minute * time.Duration(u.config.JWT.RefreshTokenDuration)).Unix(),
+		"sub": id,
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
+	refreshTokenString, err := refreshToken.SignedString(secretKey)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessTokenString, refreshTokenString, nil
 }

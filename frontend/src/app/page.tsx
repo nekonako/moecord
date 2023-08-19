@@ -1,41 +1,35 @@
 "use client";
-
-import { Button } from "@mui/material";
-import Grid from "@mui/material/Unstable_Grid2";
-import { useTheme } from "@mui/material/styles";
-import { useEffect } from "react";
+import Grid from "@mui/material/Unstable_Grid2"; // Grid version 2
+import Image from "next/image";
+import Logo from "../../public/logo.png";
+import { Button, Container, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:4001");
-    console.log(ws);
-    ws.onopen = (e) => {
-      console.log(e);
-      ws.send("se");
-    };
-  }, []);
-
-  const theme = useTheme();
+  const router = useRouter();
   return (
-    <Grid
-      container
-      bgcolor={theme.palette.background.default}
-      minHeight={"100vh"}
-      minWidth={"100%"}
-    >
-      <Grid xs={0.5}>
-        <Button>xs</Button>
+    <Container maxWidth="lg">
+      <Grid container padding={2} minWidth={"100%"}>
+        <Grid display="flex" justifyContent="center" alignItems="center">
+          <Image src={Logo} alt="logo" width={30} />
+          <Typography paddingLeft={2} fontWeight={600}>
+            Moecord
+          </Typography>
+        </Grid>
+        <Grid
+          xs
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        ></Grid>
+        <Grid display="flex" justifyContent="center" alignItems="center">
+          <Button variant="contained" onClick={() => router.push("/oauth")}>
+            <Typography textTransform={"none"} color={"white"}>
+              Login
+            </Typography>
+          </Button>
+        </Grid>
       </Grid>
-      <Grid xs bgcolor={theme.palette.grey[900]}>
-        <Button>1</Button>
-      </Grid>
-      <Grid
-        xs={9}
-        color={"ButtonText"}
-        bgcolor={theme.palette.background.paper}
-      >
-        <Button>Hello world</Button>
-      </Grid>
-    </Grid>
+    </Container>
   );
 }
