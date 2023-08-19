@@ -27,35 +27,39 @@ func newPostgres(c *config.Config) *sqlx.DB {
 	db.SetConnMaxLifetime(time.Duration(c.Postgres.ConnMaxLifeTime) * time.Minute)
 	db.SetConnMaxIdleTime(time.Duration(c.Postgres.ConnMaxIdleTime) * time.Minute)
 
+	runMigration(c, db)
+
+	return db
+}
+
+func runMigration(c *config.Config, db *sqlx.DB) {
 	driver, err := postgresMigration.WithInstance(db.DB, &postgresMigration.Config{DatabaseName: c.Postgres.Database})
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create database migration instance")
-		return db
+		return
 	}
 
 	m, err := migrate.NewWithDatabaseInstance("file://migration", c.Postgres.Database, driver)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create migration instance")
-		return db
+		return
 	}
 
-	if err = m.Up(); err != nil {
-		if err.Error() == "no change" {
-			log.Info().Msg("no migration")
-			return db
-		}
+	err = m.Up()
+	if err != nil && err.Error() == "no change" {
+		log.Info().Msg("no migration")
+		return
+	}
 
+	if err != nil {
 		log.Error().Err(err).Msg("failed up migration")
 		log.Info().Msg("try down migration to clean dirty migration")
 		if err = m.Down(); err != nil {
 			log.Fatal().Err(err).Msg("failed down migration")
-			return db
+			return
 		}
-
-		return db
 	}
 
 	log.Info().Msg("successfully run migration")
 
-	return db
 }
