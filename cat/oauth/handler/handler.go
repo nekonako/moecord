@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/nekonako/moecord/api"
 	"github.com/nekonako/moecord/config"
-	"github.com/nekonako/moecord/infra/tracer"
 	"github.com/nekonako/moecord/oauth/usecase"
+	"github.com/nekonako/moecord/pkg/api"
+	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/rs/zerolog/log"
 )
 

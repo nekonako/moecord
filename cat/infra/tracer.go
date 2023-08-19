@@ -20,7 +20,7 @@ import (
 
 func initTracer(c *config.Config) {
 
-	tracerAgen := c.Apm.Host
+	tracerAgent := c.Apm.Host
 	ctx := context.Background()
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
@@ -38,7 +38,7 @@ func initTracer(c *config.Config) {
 	metricExp, err := otlpmetricgrpc.New(
 		ctx,
 		otlpmetricgrpc.WithInsecure(),
-		otlpmetricgrpc.WithEndpoint(tracerAgen),
+		otlpmetricgrpc.WithEndpoint(tracerAgent),
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("failed create open telemetry metrics")
@@ -57,7 +57,7 @@ func initTracer(c *config.Config) {
 
 	traceClient := otlptracegrpc.NewClient(
 		otlptracegrpc.WithInsecure(),
-		otlptracegrpc.WithEndpoint(tracerAgen),
+		otlptracegrpc.WithEndpoint(tracerAgent),
 		otlptracegrpc.WithDialOption(grpc.WithBlock()),
 	)
 	traceExp, err := otlptrace.New(ctx, traceClient)
