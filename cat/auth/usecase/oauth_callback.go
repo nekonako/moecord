@@ -148,15 +148,27 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 	}
 
 	if newUser {
-		err = u.repo.SaveServer(ctx, tx, repo.Server{
-			ID:            ulid.Make(),
+		serverID := ulid.Make()
+		server := repo.Server{
+			ID:            serverID,
 			OwnerID:       user.ID,
 			Name:          "Direct Messages",
 			DirectMessage: true,
 			CreatedAt:     now,
 			UpdatedAt:     now,
-		})
-		if err != nil {
+		}
+		if err = u.repo.SaveServer(ctx, tx, server); err != nil {
+			tracer.SpanError(span, err)
+			log.Error().Msg(err.Error())
+			return r, errors.New("failed create server")
+		}
+		member := repo.ServerMember{
+			ID:        ulid.Make(),
+			ServerID:  serverID,
+			UserID:    user.ID,
+			CreatedAt: now,
+		}
+		if err = u.repo.SaveServerMember(ctx, tx, member); err != nil {
 			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
 			return r, errors.New("failed create server")

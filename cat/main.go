@@ -15,6 +15,7 @@ import (
 	"github.com/nekonako/moecord/auth"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
+	"github.com/nekonako/moecord/server"
 	"github.com/nekonako/moecord/websocket"
 	"github.com/rs/zerolog/log"
 )
@@ -65,6 +66,9 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	oauth := auth.New(c, infra)
 	oauth.InitRouter(r)
+
+	server := server.New(c, infra)
+	server.InitRouter(r)
 
 	origins := handlers.AllowedOrigins([]string{"*"})
 	headers := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin", "Content-Type"})

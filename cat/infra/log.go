@@ -2,6 +2,7 @@ package infra
 
 import (
 	"os"
+	"time"
 
 	"github.com/nekonako/moecord/config"
 	"github.com/rs/zerolog"
@@ -10,8 +11,9 @@ import (
 
 func initLogger(c *config.Config) {
 
+	now := time.Now().String()
 	file, err := os.OpenFile(
-		"../../dev/log/myapp.log",
+		"../../dev/log/"+now+".log",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0664,
 	)

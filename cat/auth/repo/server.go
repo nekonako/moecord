@@ -19,6 +19,13 @@ type Server struct {
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
+type ServerMember struct {
+	ID        ulid.ULID `db:"id"`
+	ServerID  ulid.ULID `db:"server_id"`
+	UserID    ulid.ULID `db:"user_id"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server) error {
 
 	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
@@ -39,6 +46,31 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed insert user")
+		return err
+	}
+
+	return nil
+
+}
+
+func (r *Repository) SaveServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
+
+	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	defer tracer.Finish(span)
+
+	query := `
+		INSERT INTO server_member (
+			id,
+			server_id,
+			user_id,
+			created_at
+		) VALUES (:id, :server_id, :user_id, :created_at)
+	`
+
+	_, err := tx.NamedExecContext(ctx, query, member)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed insert server member")
 		return err
 	}
 
