@@ -5,7 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/nekonako/moecord/pkg/tracer"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/trace"
 )

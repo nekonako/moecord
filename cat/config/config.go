@@ -90,6 +90,7 @@ type OauthProviders struct {
 	RedirectURI string `mapstructure:"redirect_uri"`
 	Github      Oauth  `mapstructure:"github"`
 	Google      Oauth  `mapstructure:"google"`
+	Discord     Oauth  `mapstructure:"discord"`
 }
 
 type Oauth struct {

@@ -12,9 +12,9 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/nekonako/moecord/auth"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/oauth"
 	"github.com/nekonako/moecord/websocket"
 	"github.com/rs/zerolog/log"
 )
@@ -63,7 +63,7 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	r := mux.NewRouter()
 
-	oauth := oauth.New(c, infra)
+	oauth := auth.New(c, infra)
 	oauth.InitRouter(r)
 
 	origins := handlers.AllowedOrigins([]string{"*"})

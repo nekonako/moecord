@@ -4,40 +4,27 @@ import (
 	"errors"
 	"fmt"
 
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/google/uuid"
-	"github.com/nekonako/moecord/config"
+	"github.com/nekonako/moecord/pkg/validation"
 	"github.com/rs/zerolog/log"
 )
 
 var (
 	ErrInvalidOauthProvider = errors.New("invalid oauth provider")
-	oauthMapProvider        = map[string]bool{
-		"github": true,
-		"google": true,
-	}
 )
 
 type OauthRequest struct {
-	Provider string `json:"provider"`
+	Provider string `json:"provider" validate:"required,oneof=github google discord"`
 }
 
-func (r OauthRequest) validate(c *config.Config) error {
-	return validation.ValidateStruct(
-		&r,
-		validation.Field(&r.Provider, validation.Required, validation.By(func(value interface{}) error {
-			if !oauthMapProvider[r.Provider] {
-				return ErrInvalidOauthProvider
-			}
-			return nil
-		})),
-	)
+func (r OauthRequest) validate() error {
+	return validation.Validate.Struct(&r)
 }
 
 func (u *UseCase) Authorization(input OauthRequest) (string, error) {
 
 	log.Info().Msg("start oauth")
-	if err := input.validate(u.config); err != nil {
+	if err := input.validate(); err != nil {
 		log.Error().Msg(err.Error())
 		return "", err
 	}
@@ -51,8 +38,11 @@ func (u *UseCase) Authorization(input OauthRequest) (string, error) {
 	case "google":
 		oauthURL = fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&scope=%s&state=%s&response_type=code", u.config.Oauth.Google.AuthURL, u.config.Oauth.Google.ClientID, u.config.Oauth.RedirectURI+input.Provider, u.config.Oauth.Google.Scope, state)
 		return oauthURL, nil
+	case "discord":
+		oauthURL = fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&scope=%s&state=%s&response_type=code", u.config.Oauth.Discord.AuthURL, u.config.Oauth.Discord.ClientID, u.config.Oauth.RedirectURI+input.Provider, u.config.Oauth.Discord.Scope, state)
+		return oauthURL, nil
 	default:
-		return "", errors.New("oauth provider not implemented")
+		return "", ErrInvalidOauthProvider
 	}
 
 }

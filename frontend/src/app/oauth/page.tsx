@@ -11,8 +11,9 @@ import {
 import Grid from "@mui/material/Unstable_Grid2/Grid2";
 import Image from "next/image";
 import Logo from "../../../public/logo.png";
+import DiscordIcon from "../../../public/discord.svg";
 
-export default function Login() {
+export default function Oauth() {
   const theme = useTheme();
   return (
     <Container maxWidth="sm">
@@ -64,6 +65,13 @@ export default function Login() {
             >
               <GitHub fontSize={"small"} />
               <span style={{ marginLeft: 4 }}>Github</span>
+            </Button>
+            <Button
+              color="inherit"
+              href="http://localhost:4000/v1/login/oauth/authorization/discord"
+            >
+              <Image src={DiscordIcon} alt="discord" width={20} />
+              <span style={{ marginLeft: 4 }}>Discord</span>
             </Button>
           </ButtonGroup>
         </Box>

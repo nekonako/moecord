@@ -11,18 +11,24 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/nekonako/moecord/pkg/validation"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
 )
 
 var (
-	errFailedTokenExchange = errors.New("failed token exchange")
+	ErrFailedTokenExchange = errors.New("failed token exchange")
+	ErrFailedGetUserInfo   = errors.New("failed get user info")
 )
 
 type CallbackRequest struct {
-	Provider          string `json:"provider"`
-	AuthorizationCode string `json:"authorization_code"`
-	State             string `json:"state"`
+	Provider          string `json:"provider" validate:"required,oneof=github google discord"`
+	AuthorizationCode string `json:"authorization_code" validate:"required"`
+	State             string `json:"state" validate:"required"`
+}
+
+func (r CallbackRequest) validate() error {
+	return validation.Validate.Struct(&r)
 }
 
 type oauthTokenExchange struct {
@@ -47,6 +53,10 @@ type googleTokenExchangeResponse struct {
 	IdToken     string `json:"id_token"`
 }
 
+type discordTokenExchangeResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
 type response struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -60,6 +70,11 @@ func (u *UseCase) Callback(input CallbackRequest) (response, error) {
 		r     response
 	)
 
+	if err := input.validate(); err != nil {
+		log.Error().Msg(err.Error())
+		return r, err
+	}
+
 	switch input.Provider {
 	case "github":
 		email, err = u.githubTokenExchange(input.AuthorizationCode)
@@ -69,6 +84,12 @@ func (u *UseCase) Callback(input CallbackRequest) (response, error) {
 		}
 	case "google":
 		email, err = u.googleTokenExchange(input.AuthorizationCode)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return r, err
+		}
+	case "discord":
+		email, err = u.discordTokenExchange(input.AuthorizationCode)
 		if err != nil {
 			log.Error().Msg(err.Error())
 			return r, err
@@ -104,14 +125,14 @@ func (u *UseCase) githubTokenExchange(authCode string) (string, error) {
 	byteTokenExchange, err := json.Marshal(tokenExchange)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 
 	c := http.DefaultClient
 	req, err := http.NewRequest(http.MethodPost, tokenExchangeURL, bytes.NewBuffer(byteTokenExchange))
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
@@ -119,31 +140,36 @@ func (u *UseCase) githubTokenExchange(authCode string) (string, error) {
 	res, err := c.Do(req)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		log.Error().Msg(fmt.Sprintf("fialed exchange token, with http status code %d", res.StatusCode))
-		return "", errFailedTokenExchange
+		return "", ErrFailedTokenExchange
 	}
 
 	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 
 	ru, err := http.NewRequest(http.MethodGet, "https://api.github.com/user", nil)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedGetUserInfo
 	}
 	ru.Header.Set("Authorization", "Bearer "+r.AccessToken)
 
 	res, err = c.Do(ru)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedGetUserInfo
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed get user information, with http status code %d", res.StatusCode))
+		return "", ErrFailedGetUserInfo
 	}
 
 	var user struct {
@@ -152,7 +178,7 @@ func (u *UseCase) githubTokenExchange(authCode string) (string, error) {
 
 	if err = json.NewDecoder(res.Body).Decode(&user); err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedGetUserInfo
 	}
 
 	return user.Email, nil
@@ -175,31 +201,36 @@ func (u *UseCase) googleTokenExchange(authCode string) (string, error) {
 	req, err := http.NewRequest(http.MethodPost, tokenExchangeURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	res, err := c.Do(req)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		log.Error().Msg(fmt.Sprintf("fialed exchange token, with http status code %d", res.StatusCode))
-		return "", errFailedTokenExchange
+		return "", ErrFailedTokenExchange
 	}
 
 	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedTokenExchange
 	}
 
 	ru, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + r.AccessToken)
 	if err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedGetUserInfo
+	}
+
+	if ru.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed get user information, with http status code %d", ru.StatusCode))
+		return "", ErrFailedGetUserInfo
 	}
 
 	var user struct {
@@ -208,7 +239,75 @@ func (u *UseCase) googleTokenExchange(authCode string) (string, error) {
 
 	if err = json.NewDecoder(ru.Body).Decode(&user); err != nil {
 		log.Error().Msg(err.Error())
-		return "", err
+		return "", ErrFailedGetUserInfo
+	}
+
+	return user.Email, nil
+
+}
+
+func (u *UseCase) discordTokenExchange(authCode string) (string, error) {
+
+	data := url.Values{}
+	data.Set("client_id", u.config.Oauth.Discord.ClientID)
+	data.Set("client_secret", u.config.Oauth.Discord.ClientSecret)
+	data.Set("code", authCode)
+	data.Set("redirect_uri", u.config.Oauth.RedirectURI+u.config.Oauth.Discord.Name)
+	data.Set("grant_type", "authorization_code")
+
+	tokenExchangeURL := u.config.Oauth.Discord.TokenExchangeURL
+	r := discordTokenExchangeResponse{}
+	c := http.DefaultClient
+
+	req, err := http.NewRequest(http.MethodPost, tokenExchangeURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedTokenExchange
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	res, err := c.Do(req)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedTokenExchange
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed exchange token, with http status code %d", res.StatusCode))
+		return "", ErrFailedTokenExchange
+	}
+
+	if err = json.NewDecoder(res.Body).Decode(&r); err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedTokenExchange
+	}
+
+	ru, err := http.NewRequest(http.MethodGet, "https://discord.com/api/users/@me", nil)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedGetUserInfo
+	}
+	ru.Header.Set("Authorization", "Bearer "+r.AccessToken)
+
+	res, err = c.Do(ru)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedGetUserInfo
+	}
+
+	if res.StatusCode != http.StatusOK {
+		log.Error().Msg(fmt.Sprintf("fialed get user information, with http status code %d", res.StatusCode))
+		return "", ErrFailedGetUserInfo
+	}
+
+	var user struct {
+		Email string `json:"email"`
+	}
+
+	if err = json.NewDecoder(res.Body).Decode(&user); err != nil {
+		log.Error().Msg(err.Error())
+		return "", ErrFailedGetUserInfo
 	}
 
 	return user.Email, nil

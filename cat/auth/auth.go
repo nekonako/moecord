@@ -1,13 +1,13 @@
-package oauth
+package auth
 
 import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/nekonako/moecord/auth/handler"
+	"github.com/nekonako/moecord/auth/usecase"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/oauth/handler"
-	"github.com/nekonako/moecord/oauth/usecase"
 )
 
 type Oauth struct {
