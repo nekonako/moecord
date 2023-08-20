@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
@@ -17,7 +18,7 @@ type User struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (r *Repository) SaveOrUpdateUser(ctx context.Context, user User) error {
+func (r *Repository) SaveOrUpdateUser(ctx context.Context, tx *sqlx.Tx, user User) error {
 
 	span := tracer.SpanFromContext(ctx, "repo.SaveOrUpdateUser")
 	defer tracer.Finish(span)
@@ -33,7 +34,7 @@ func (r *Repository) SaveOrUpdateUser(ctx context.Context, user User) error {
 		ON CONFLICT (email) DO UPDATE SET updated_at=NOW()
 	`
 
-	_, err := r.postgres.NamedExecContext(ctx, query, user)
+	_, err := tx.NamedExecContext(ctx, query, user)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed insert user")
@@ -54,7 +55,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (User, er
 	err := r.postgres.GetContext(ctx, &result, query, email)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert user")
+		log.Error().Err(err).Msg("failed get user")
 		return result, err
 	}
 

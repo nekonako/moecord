@@ -120,7 +120,8 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		return r, errors.New("failed get user")
 	}
 
-	if err == sql.ErrNoRows {
+	newUser := err == sql.ErrNoRows
+	if newUser {
 		user = repo.User{
 			ID:        id,
 			Username:  username,
@@ -130,11 +131,43 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		}
 	}
 
-	err = u.repo.SaveOrUpdateUser(ctx, user)
-	if err != nil && err != sql.ErrNoRows {
+	tx, err := u.infra.Postgres.BeginTxx(ctx, nil)
+	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
-		return r, errors.New("failed get user")
+		return r, err
+	}
+
+	defer tx.Rollback()
+
+	err = u.repo.SaveOrUpdateUser(ctx, tx, user)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return r, errors.New("failed create user")
+	}
+
+	if newUser {
+		err = u.repo.SaveServer(ctx, tx, repo.Server{
+			ID:            ulid.Make(),
+			OwnerID:       user.ID,
+			Name:          "Direct Messages",
+			DirectMessage: true,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		})
+		if err != nil {
+			tracer.SpanError(span, err)
+			log.Error().Msg(err.Error())
+			return r, errors.New("failed create server")
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return r, errors.New("failed commit transaction")
 	}
 
 	accessToken, refreshToken, err := u.generateToken(user.ID)
