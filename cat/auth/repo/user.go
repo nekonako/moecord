@@ -2,36 +2,38 @@ package repo
 
 import (
 	"context"
+	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type User struct {
-	ID       ulid.ULID `db:"id"`
-	Username string    `db:"username"`
-	Email    string    `db:"email"`
-	Password string    `db:"password"`
+	ID        ulid.ULID `db:"id"`
+	Username  string    `db:"username"`
+	Email     string    `db:"email"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (r *Repository) SaveUser(ctx context.Context, tx *sqlx.Tx, user User) error {
+func (r *Repository) SaveOrUpdateUser(ctx context.Context, user User) error {
 
-	span := trace.SpanFromContext(ctx)
+	span := tracer.SpanFromContext(ctx, "repo.SaveOrUpdateUser")
 	defer tracer.Finish(span)
 
 	query := `
-		INSERT INTO "user" (
+		INSERT INTO users (
 			id,
 			username,
 			email,
-			password
-		) VALUES (:id, :username, :email, :password)
+			created_at,
+			updated_at
+		) VALUES (:id, :username, :email, :created_at, :updated_at)
+		ON CONFLICT (email) DO UPDATE SET updated_at=NOW()
 	`
 
-	_, err := tx.NamedExecContext(ctx, query, user)
+	_, err := r.postgres.NamedExecContext(ctx, query, user)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed insert user")
@@ -39,4 +41,22 @@ func (r *Repository) SaveUser(ctx context.Context, tx *sqlx.Tx, user User) error
 	}
 
 	return nil
+}
+
+func (r *Repository) GetUserByEmail(ctx context.Context, email string) (User, error) {
+
+	span := tracer.SpanFromContext(ctx, "repo.GetUserByEmail")
+	defer tracer.Finish(span)
+
+	query := "SELECT id,username,email,created_at,updated_at FROM users WHERE email = $1"
+
+	result := User{}
+	err := r.postgres.GetContext(ctx, &result, query, email)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed insert user")
+		return result, err
+	}
+
+	return result, nil
 }

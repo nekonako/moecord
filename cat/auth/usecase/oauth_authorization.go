@@ -1,10 +1,13 @@
 package usecase
 
 import (
+	"context"
+
 	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/nekonako/moecord/pkg/validation"
 	"github.com/rs/zerolog/log"
 )
@@ -21,10 +24,13 @@ func (r OauthRequest) validate() error {
 	return validation.Validate.Struct(&r)
 }
 
-func (u *UseCase) Authorization(input OauthRequest) (string, error) {
+func (u *UseCase) Authorization(ctx context.Context, input OauthRequest) (string, error) {
 
-	log.Info().Msg("start oauth")
+	span := tracer.SpanFromContext(ctx, "usecase.authorization")
+	defer tracer.Finish(span)
+
 	if err := input.validate(); err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return "", err
 	}
@@ -42,6 +48,7 @@ func (u *UseCase) Authorization(input OauthRequest) (string, error) {
 		oauthURL = fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&scope=%s&state=%s&response_type=code", u.config.Oauth.Discord.AuthURL, u.config.Oauth.Discord.ClientID, u.config.Oauth.RedirectURI+input.Provider, u.config.Oauth.Discord.Scope, state)
 		return oauthURL, nil
 	default:
+		tracer.SpanError(span, ErrInvalidOauthProvider)
 		return "", ErrInvalidOauthProvider
 	}
 

@@ -7,14 +7,19 @@ import (
 
 	"github.com/nekonako/moecord/auth/usecase"
 	"github.com/nekonako/moecord/pkg/api"
+	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/nekonako/moecord/pkg/validation"
 	"github.com/rs/zerolog/log"
 )
 
 func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 
+	ctx, span := tracer.Start(r.Context(), "oauth", "handler.redirect")
+	defer tracer.Finish(span)
+
 	reqBody := usecase.CallbackRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
@@ -25,8 +30,9 @@ func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	res, err := h.usecase.Callback(reqBody)
+	res, err := h.usecase.Callback(ctx, reqBody)
 	if err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		ive, ve := validation.IsValidationError(err)
 		switch {

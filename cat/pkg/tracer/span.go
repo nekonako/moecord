@@ -9,7 +9,13 @@ import (
 )
 
 func Start(ctx context.Context, event, spanName string, opts ...trace.TracerOption) (context.Context, trace.Span) {
-	return otel.Tracer(event).Start(ctx, spanName)
+	return otel.Tracer(event, opts...).Start(ctx, spanName)
+}
+
+func SpanFromContext(ctx context.Context, name string) trace.Span {
+	span := trace.SpanFromContext(ctx)
+	span.SetName(name)
+	return span
 }
 
 func SpanError(span trace.Span, err error) {

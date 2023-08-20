@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +13,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/nekonako/moecord/auth/repo"
+	"github.com/nekonako/moecord/pkg/tracer"
+	"github.com/nekonako/moecord/pkg/util"
 	"github.com/nekonako/moecord/pkg/validation"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
@@ -62,15 +67,20 @@ type response struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (u *UseCase) Callback(input CallbackRequest) (response, error) {
+func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response, error) {
 
 	var (
 		err   error
 		email string
 		r     response
+		now   = time.Now().UTC()
 	)
 
+	span := tracer.SpanFromContext(ctx, "usecase.callback")
+	defer tracer.Finish(span)
+
 	if err := input.validate(); err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return r, err
 	}
@@ -79,18 +89,21 @@ func (u *UseCase) Callback(input CallbackRequest) (response, error) {
 	case "github":
 		email, err = u.githubTokenExchange(input.AuthorizationCode)
 		if err != nil {
+			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
 			return r, err
 		}
 	case "google":
 		email, err = u.googleTokenExchange(input.AuthorizationCode)
 		if err != nil {
+			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
 			return r, err
 		}
 	case "discord":
 		email, err = u.discordTokenExchange(input.AuthorizationCode)
 		if err != nil {
+			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
 			return r, err
 		}
@@ -99,8 +112,34 @@ func (u *UseCase) Callback(input CallbackRequest) (response, error) {
 	}
 
 	id := ulid.Make()
-	accessToken, refreshToken, err := u.generateToken(id, email)
+	username, _ := util.RandomHex(8)
+	user, err := u.repo.GetUserByEmail(ctx, email)
+	if err != nil && err != sql.ErrNoRows {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return r, errors.New("failed get user")
+	}
+
+	if err == sql.ErrNoRows {
+		user = repo.User{
+			ID:        id,
+			Username:  username,
+			Email:     email,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+	}
+
+	err = u.repo.SaveOrUpdateUser(ctx, user)
+	if err != nil && err != sql.ErrNoRows {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return r, errors.New("failed get user")
+	}
+
+	accessToken, refreshToken, err := u.generateToken(user.ID)
 	if err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return r, err
 	}
@@ -314,15 +353,14 @@ func (u *UseCase) discordTokenExchange(authCode string) (string, error) {
 
 }
 
-func (u *UseCase) generateToken(id ulid.ULID, email string) (string, string, error) {
+func (u *UseCase) generateToken(id ulid.ULID) (string, string, error) {
 
-	now := time.Now()
+	now := time.Now().UTC()
 	secretKey := []byte(u.config.JWT.PrivateKey)
 	claims := jwt.MapClaims{
-		"iat":   now.Unix(),
-		"exp":   now.Add(time.Minute * time.Duration(u.config.JWT.AccessTokenDuration)).Unix(),
-		"email": email,
-		"sub":   id,
+		"iat": now.Unix(),
+		"exp": now.Add(time.Minute * time.Duration(u.config.JWT.AccessTokenDuration)).Unix(),
+		"sub": id,
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)

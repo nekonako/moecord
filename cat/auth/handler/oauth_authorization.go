@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -19,22 +19,30 @@ type ApiError struct {
 
 func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 
-	_, span := tracer.Start(r.Context(), "oauth", "redirect")
+	ctx, span := tracer.Start(r.Context(), "oauth", "handler.authorization")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.OauthRequest{
 		Provider: mux.Vars(r)["provider"],
 	}
 
-	span.AddEvent(fmt.Sprintf("aouth %s", reqBody.Provider))
-	log.Info().Msg("start oauth")
-	url, err := h.usecase.Authorization(reqBody)
+	url, err := h.usecase.Authorization(ctx, reqBody)
 	if err != nil {
+		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		if ok, ve := validation.IsValidationError(err); ok {
 			api.NewHttpResponse().
 				WithCode(http.StatusBadRequest).
 				WithErrors(ve).
+				WitMessage("bad request").
+				SendJSON(w)
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidOauthProvider) {
+			api.NewHttpResponse().
+				WithCode(http.StatusBadRequest).
+				WithError(err).
 				WitMessage("bad request").
 				SendJSON(w)
 			return

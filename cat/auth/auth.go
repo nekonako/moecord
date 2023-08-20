@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/nekonako/moecord/auth/handler"
+	"github.com/nekonako/moecord/auth/repo"
 	"github.com/nekonako/moecord/auth/usecase"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
@@ -27,7 +28,8 @@ func New(
 
 func (o *Oauth) InitRouter(r *mux.Router) {
 
-	u := usecase.New(o.Config)
+	repo := repo.New(o.Infra.Postgres)
+	u := usecase.New(o.Config, o.Infra, repo)
 	h := handler.New(o.Config, u)
 
 	r.HandleFunc("/v1/login/oauth/authorization/{provider}", h.Authorization).Methods(http.MethodGet)
