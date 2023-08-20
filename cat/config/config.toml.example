@@ -52,6 +52,14 @@ client_secret = ""
 token_exchange_url = "https://oauth2.googleapis.com/token"
 scope = "https://www.googleapis.com/auth/userinfo.profile"
 
+[oauth.discord]
+name = "discord"
+auth_url = "https://discord.com/oauth2/authorize"
+client_id = ""
+client_secret = ""
+token_exchange_url = "https://discord.com/api/oauth2/token"
+scope = "identify email"
+
 [cloudinary]
 cloud_name = ""
 api_key = ""
