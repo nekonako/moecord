@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/cloudinary/cloudinary-go/v2 v2.4.0
-	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/go-playground/validator/v10 v10.15.1
 	github.com/gobwas/ws v1.3.0
 	github.com/gocql/gocql v1.5.2
 	github.com/golang-jwt/jwt/v5 v5.0.0
@@ -18,6 +18,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.0
 	github.com/redis/go-redis/v9 v9.0.5
 	github.com/rs/zerolog v1.30.0
+	github.com/scylladb/gocqlx/v2 v2.8.0
 	github.com/spf13/viper v1.16.0
 	go.opentelemetry.io/otel v1.16.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.39.0
@@ -41,7 +42,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.15.1 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
@@ -62,6 +62,7 @@ require (
 	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
+	github.com/scylladb/go-reflectx v1.0.1 // indirect
 	github.com/spf13/afero v1.9.5 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

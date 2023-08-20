@@ -39,7 +39,7 @@ func runMigration(c *config.Config, db *sqlx.DB) {
 		return
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file://migration", c.Postgres.Database, driver)
+	m, err := migrate.NewWithDatabaseInstance("file://migration/postgres", c.Postgres.Database, driver)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create migration instance")
 		return

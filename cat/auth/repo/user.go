@@ -48,7 +48,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (User, er
 	span := tracer.SpanFromContext(ctx, "repo.GetUserByEmail")
 	defer tracer.Finish(span)
 
-	query := "SELECT id,username,email,created_at,updated_at FROM users WHERE email = $1"
+	query := "SELECT id, username, email, created_at, updated_at FROM users WHERE email = $1"
 
 	result := User{}
 	err := r.postgres.GetContext(ctx, &result, query, email)
