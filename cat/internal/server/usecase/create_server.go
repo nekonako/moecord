@@ -39,7 +39,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		return err
 	}
 
-	defer tx.Commit()
+	defer tx.Rollback()
 
 	server := repo.Server{
 		ID:            serverID,
@@ -56,14 +56,63 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		return err
 	}
 
-	member := repo.ServerMember{
+	serverMember := repo.ServerMember{
 		ID:        ulid.Make(),
 		ServerID:  serverID,
 		UserID:    userID,
 		CreatedAt: now,
 	}
 
-	if err := u.repo.SaveServerMember(ctx, tx, member); err != nil {
+	if err := u.repo.SaveServerMember(ctx, tx, serverMember); err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return err
+	}
+
+	textChannelID := ulid.Make()
+	voiceChannelID := ulid.Make()
+
+	channel := []repo.Channel{
+		{
+			ID:          textChannelID,
+			ServerID:    serverID,
+			Name:        "General",
+			ChannelType: "text",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			ID:          voiceChannelID,
+			ServerID:    serverID,
+			Name:        "General",
+			ChannelType: "voice",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+	}
+
+	if err := u.repo.SaveChannel(ctx, tx, channel); err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return err
+	}
+
+	channelMember := []repo.ChannelMember{
+		{
+			ID:        ulid.Make(),
+			ChannelID: textChannelID,
+			UserID:    userID,
+			CreatedAt: now,
+		},
+		{
+			ID:        ulid.Make(),
+			ChannelID: voiceChannelID,
+			UserID:    userID,
+			CreatedAt: now,
+		},
+	}
+
+	if err := u.repo.SaveChannelMember(ctx, tx, channelMember); err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return err

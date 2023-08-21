@@ -1,0 +1,1 @@
+ALTER TABLE "channel" DROP COLUMN IF EXISTS channel_type;
