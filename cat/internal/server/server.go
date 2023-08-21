@@ -37,5 +37,6 @@ func (o *Oauth) InitRouter(r *mux.Router) {
 	h := handler.New(o.Config, u)
 
 	sub.HandleFunc("", h.ListServer).Methods(http.MethodGet)
+	sub.HandleFunc("", h.CreateServer).Methods(http.MethodPost)
 
 }

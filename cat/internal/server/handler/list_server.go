@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handler) ListServer(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "oauth", "handler.ListServer")
+	ctx, span := tracer.Start(r.Context(), "server", "handler.ListServer")
 	defer tracer.Finish(span)
 
 	userID := ctx.Value(middleware.Claim("user_id")).(string)
