@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/nekonako/moecord/auth/usecase"
+	"github.com/nekonako/moecord/internal/auth/usecase"
 	"github.com/nekonako/moecord/pkg/api"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/nekonako/moecord/pkg/validation"

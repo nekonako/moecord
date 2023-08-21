@@ -3,7 +3,7 @@ package usecase
 import (
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/server/repo"
+	"github.com/nekonako/moecord/internal/auth/repo"
 )
 
 type UseCase struct {

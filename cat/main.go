@@ -12,11 +12,11 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/nekonako/moecord/auth"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/server"
-	"github.com/nekonako/moecord/websocket"
+	"github.com/nekonako/moecord/internal/auth"
+	"github.com/nekonako/moecord/internal/server"
+	"github.com/nekonako/moecord/internal/websocket"
 	"github.com/rs/zerolog/log"
 )
 
@@ -72,7 +72,7 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	origins := handlers.AllowedOrigins([]string{"*"})
 	headers := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin", "Content-Type"})
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"})
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", c.Api.Host, c.Api.Port),

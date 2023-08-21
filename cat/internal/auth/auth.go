@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/nekonako/moecord/auth/handler"
-	"github.com/nekonako/moecord/auth/repo"
-	"github.com/nekonako/moecord/auth/usecase"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
+	"github.com/nekonako/moecord/internal/auth/handler"
+	"github.com/nekonako/moecord/internal/auth/repo"
+	"github.com/nekonako/moecord/internal/auth/usecase"
 )
 
 type Oauth struct {

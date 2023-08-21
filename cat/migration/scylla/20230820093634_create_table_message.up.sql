@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS message (
+CREATE TABLE IF NOT EXISTS messages (
     id BLOB,
     channel_id BLOB,
     sender_id BLOB,

@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/nekonako/moecord/config"
-	"github.com/nekonako/moecord/server/usecase"
+	"github.com/nekonako/moecord/internal/server/usecase"
 )
 
 type Handler struct {

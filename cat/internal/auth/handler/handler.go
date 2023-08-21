@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"github.com/nekonako/moecord/auth/usecase"
 	"github.com/nekonako/moecord/config"
+	"github.com/nekonako/moecord/internal/auth/usecase"
 )
 
 type Handler struct {

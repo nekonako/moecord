@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nekonako/moecord/auth/repo"
+	"github.com/nekonako/moecord/internal/auth/repo"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/nekonako/moecord/pkg/util"
 	"github.com/nekonako/moecord/pkg/validation"

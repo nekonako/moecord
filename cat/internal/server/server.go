@@ -6,10 +6,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/middleware"
-	"github.com/nekonako/moecord/server/handler"
-	"github.com/nekonako/moecord/server/repo"
-	"github.com/nekonako/moecord/server/usecase"
+	"github.com/nekonako/moecord/internal/server/handler"
+	"github.com/nekonako/moecord/internal/server/repo"
+	"github.com/nekonako/moecord/internal/server/usecase"
+	"github.com/nekonako/moecord/pkg/middleware"
 )
 
 type Oauth struct {

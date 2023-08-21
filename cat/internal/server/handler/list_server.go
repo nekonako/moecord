@@ -3,8 +3,8 @@ package handler
 import (
 	"net/http"
 
-	"github.com/nekonako/moecord/middleware"
 	"github.com/nekonako/moecord/pkg/api"
+	"github.com/nekonako/moecord/pkg/middleware"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/rs/zerolog/log"
 )
@@ -18,7 +18,6 @@ func (h *Handler) ListServer(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
-
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").
