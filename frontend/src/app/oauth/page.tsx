@@ -11,8 +11,6 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2/Grid2";
 import Image from "next/image";
-import Logo from "logo.png";
-import DiscordIcon from "discord.svg";
 
 export default function Oauth() {
   const theme = useTheme();
@@ -33,7 +31,7 @@ export default function Oauth() {
           alignItems="center"
           marginBottom={3}
         >
-          <Image src={Logo} alt="logo" width={40} />
+          <Image src="/logo.png" alt="logo" width={40} height={40} />
           <Typography paddingLeft={2} fontWeight={600} fontSize={25}>
             Moecord
           </Typography>
@@ -71,7 +69,7 @@ export default function Oauth() {
               color="inherit"
               href="http://localhost:4000/v1/login/oauth/authorization/discord"
             >
-              <Image src={DiscordIcon} alt="discord" width={20} />
+              <Image src="/discord.svg" alt="discord" width={20} height={20} />
               <span style={{ marginLeft: 4 }}>Discord</span>
             </Button>
           </ButtonGroup>
