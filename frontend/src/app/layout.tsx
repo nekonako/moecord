@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import ThemeRegistry from "./ThemeRegistry";
+import ThemeRegistry from "./theme_registry";
 
 export default function RootLayout({
   children,
