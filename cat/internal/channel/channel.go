@@ -12,7 +12,7 @@ import (
 	"github.com/nekonako/moecord/pkg/middleware"
 )
 
-type Oauth struct {
+type Channel struct {
 	Config *config.Config
 	Infra  *infra.Infra
 }
@@ -20,22 +20,22 @@ type Oauth struct {
 func New(
 	c *config.Config,
 	infra *infra.Infra,
-) *Oauth {
-	return &Oauth{
+) *Channel {
+	return &Channel{
 		Config: c,
 		Infra:  infra,
 	}
 }
 
-func (o *Oauth) InitRouter(r *mux.Router) {
+func (o *Channel) InitRouter(r *mux.Router) {
 
-	sub := r.PathPrefix("/v1/channels").Subrouter()
-	sub.Use(middleware.Authentication(o.Config))
+	v1 := r.PathPrefix("/v1").Subrouter()
+	v1.Use(middleware.Authentication(o.Config))
 
 	repo := repo.New(o.Infra.Postgres)
 	u := usecase.New(o.Config, o.Infra, repo)
 	h := handler.New(o.Config, u)
 
-	sub.HandleFunc("", h.ListChannel).Methods(http.MethodGet)
+	v1.HandleFunc("/channels", h.ListChannel).Methods(http.MethodGet)
 
 }

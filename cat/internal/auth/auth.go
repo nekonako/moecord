@@ -11,7 +11,7 @@ import (
 	"github.com/nekonako/moecord/internal/auth/usecase"
 )
 
-type Oauth struct {
+type Auth struct {
 	Config *config.Config
 	Infra  *infra.Infra
 }
@@ -19,14 +19,14 @@ type Oauth struct {
 func New(
 	c *config.Config,
 	infra *infra.Infra,
-) *Oauth {
-	return &Oauth{
+) *Auth {
+	return &Auth{
 		Config: c,
 		Infra:  infra,
 	}
 }
 
-func (o *Oauth) InitRouter(r *mux.Router) {
+func (o *Auth) InitRouter(r *mux.Router) {
 
 	repo := repo.New(o.Infra.Postgres)
 	u := usecase.New(o.Config, o.Infra, repo)
