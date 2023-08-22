@@ -3,18 +3,8 @@
 import { Button } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2";
 import { useTheme } from "@mui/material/styles";
-import { useEffect } from "react";
 
-export default function Home() {
-  useEffect(() => {
-    const ws = new WebSocket("ws://localhost:4001");
-    console.log(ws);
-    ws.onopen = (e) => {
-      console.log(e);
-      ws.send("se");
-    };
-  }, []);
-
+export default function Home(p: any) {
   const theme = useTheme();
   return (
     <Grid

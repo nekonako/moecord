@@ -1,7 +1,8 @@
 "use client";
+
 import Grid from "@mui/material/Unstable_Grid2"; // Grid version 2
 import Image from "next/image";
-import Logo from "../../public/logo.png";
+import Logo from "./logo.png";
 import { Button, Container, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 
@@ -11,7 +12,7 @@ export default function Home() {
     <Container maxWidth="lg">
       <Grid container padding={2} minWidth={"100%"}>
         <Grid display="flex" justifyContent="center" alignItems="center">
-          <Image src={Logo} alt="logo" width={30} />
+          <Image src="/logo.png" alt="logo" width={30} />
           <Typography paddingLeft={2} fontWeight={600}>
             Moecord
           </Typography>

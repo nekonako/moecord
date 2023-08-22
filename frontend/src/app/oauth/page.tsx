@@ -1,4 +1,5 @@
 "use client";
+
 import { GitHub, Google } from "@mui/icons-material";
 import {
   Box,
@@ -10,8 +11,8 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/Unstable_Grid2/Grid2";
 import Image from "next/image";
-import Logo from "../../../public/logo.png";
-import DiscordIcon from "../../../public/discord.svg";
+import Logo from "logo.png";
+import DiscordIcon from "discord.svg";
 
 export default function Oauth() {
   const theme = useTheme();
