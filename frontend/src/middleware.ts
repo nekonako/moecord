@@ -15,6 +15,10 @@ export function middleware(request: NextRequest) {
     request: request,
   });
 
+  if (response.status == 401) {
+    return NextResponse.redirect(new URL("/oauth", request.url));
+  }
+
   return response;
 }
 

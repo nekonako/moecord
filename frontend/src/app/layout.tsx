@@ -1,7 +1,4 @@
-"use client";
-
 import React from "react";
-import ThemeRegistry from "./theme_registry";
 
 export default function RootLayout({
   children,
@@ -11,7 +8,7 @@ export default function RootLayout({
   return (
     <html>
       {/* <ThemeRegistry options={{ key: "mui" }}> */}
-      <body>{children}</body>
+      <body style={{ margin: 0 }}>{children}</body>
       {/* </ThemeRegistry> */}
     </html>
   );
