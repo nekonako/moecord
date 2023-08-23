@@ -111,7 +111,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		return r, errors.New("oauth provider not implemented")
 	}
 
-	id := ulid.Make()
+	userID := ulid.Make()
 	username, _ := util.RandomHex(8)
 	user, err := u.repo.GetUserByEmail(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
@@ -123,7 +123,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 	newUser := err == sql.ErrNoRows
 	if newUser {
 		user = repo.User{
-			ID:        id,
+			ID:        userID,
 			Username:  username,
 			Email:     email,
 			CreatedAt: now,
@@ -172,6 +172,54 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
 			return r, errors.New("failed create server")
+		}
+		textChannelID := ulid.Make()
+		voiceChannelID := ulid.Make()
+
+		channel := []repo.Channel{
+			{
+				ID:          textChannelID,
+				ServerID:    serverID,
+				Name:        "Text Channels",
+				ChannelType: "text",
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			},
+			{
+				ID:          voiceChannelID,
+				ServerID:    serverID,
+				Name:        "Voice Channels",
+				ChannelType: "voice",
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			},
+		}
+
+		if err := u.repo.SaveChannel(ctx, tx, channel); err != nil {
+			tracer.SpanError(span, err)
+			log.Error().Msg(err.Error())
+			return r, err
+		}
+
+		channelMember := []repo.ChannelMember{
+			{
+				ID:        ulid.Make(),
+				ChannelID: textChannelID,
+				UserID:    userID,
+				CreatedAt: now,
+			},
+			{
+				ID:        ulid.Make(),
+				ChannelID: voiceChannelID,
+				UserID:    userID,
+				CreatedAt: now,
+			},
+		}
+
+		if err := u.repo.SaveChannelMember(ctx, tx, channelMember); err != nil {
+			tracer.SpanError(span, err)
+			log.Error().Msg(err.Error())
+			return r, err
 		}
 	}
 

@@ -77,32 +77,3 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 	return nil
 
 }
-
-func (r *Repository) ListChannel(ctx context.Context, userID, serverID ulid.ULID) ([]Channel, error) {
-	span := tracer.SpanFromContext(ctx, "repo.ListChannel")
-	defer tracer.Finish(span)
-
-	query := `
-	SELECT 
-		c.id,
-		c.server_id,
-		c.name,
-		c.channel_type,
-		c.created_at,
-		c.updated_at
-	FROM channel AS c
-	INNER JOIN channel_member AS cm ON cm.channel_id = c.id
-	WHERE cm.user_id = $1 AND c.server_id = $2
-	`
-
-	result := []Channel{}
-	err := r.postgres.SelectContext(ctx, &result, query, userID, serverID)
-	if err != nil {
-		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed select channel")
-		return result, err
-	}
-
-	return result, nil
-
-}

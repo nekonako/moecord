@@ -18,12 +18,12 @@ type ListChannelResponse struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-func (u *UseCase) ListChannel(ctx context.Context, userID ulid.ULID) ([]ListChannelResponse, error) {
+func (u *UseCase) ListChannel(ctx context.Context, userID, serverId ulid.ULID) ([]ListChannelResponse, error) {
 
 	span := tracer.SpanFromContext(ctx, "usecase.ListChannel")
 	defer tracer.Finish(span)
 
-	channels, err := u.repo.ListChannel(ctx, userID)
+	channels, err := u.repo.ListChannel(ctx, userID, serverId)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())

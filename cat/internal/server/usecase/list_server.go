@@ -35,7 +35,7 @@ func (u *UseCase) ListServer(ctx context.Context, userID string) ([]ListServerRe
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
-		return nil, errors.New("failed create server")
+		return nil, errors.New("failed get list server")
 	}
 
 	res := make([]ListServerResponse, len(server))
