@@ -79,6 +79,7 @@ func (w *websocket) handleConnection(conn net.Conn) {
 			log.Error().Msg(err.Error())
 			return
 		}
+		fmt.Println(string(msg))
 		err = wsutil.WriteServerMessage(conn, op, msg)
 		if err != nil {
 			log.Error().Msg(err.Error())

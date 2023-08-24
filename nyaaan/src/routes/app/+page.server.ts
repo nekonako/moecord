@@ -19,11 +19,13 @@ type Channel = {
 export async function load({ fetch }) {
 	const responseServer = await fetch('/api/servers');
 	const servers: ApiResponse<Server> = await responseServer.json();
-
+	if (servers.code == 401) {
+		throw redirect(307, '/oauth');
+	}
 	const firstServerID = servers.data[0].id;
 	const responseChannel = await fetch('/api/channels/' + firstServerID);
 	const channels: ApiResponse<Channel> = await responseChannel.json();
-	console.log(channels);
+
 	return {
 		servers: servers.data,
 		channels: channels.data

@@ -2,11 +2,11 @@ package infra
 
 import (
 	"github.com/cloudinary/cloudinary-go/v2"
-	"github.com/gocql/gocql"
 	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go"
 	"github.com/nekonako/moecord/config"
 	"github.com/redis/go-redis/v9"
+	"github.com/scylladb/gocqlx/v2"
 )
 
 type Infra struct {
@@ -14,7 +14,7 @@ type Infra struct {
 	Cloudinary *cloudinary.Cloudinary
 	Redis      *redis.Client
 	Nats       *nats.Conn
-	Scylla     *gocql.Session
+	Scylla     *gocqlx.Session
 }
 
 func New(c *config.Config) *Infra {

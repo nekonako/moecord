@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS messages (
     content TEXT,
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
-    PRIMARY KEY (channel_id, id)
-) WITH CLUSTERING ORDER BY (id DESC);
+    PRIMARY KEY (id)
+);
