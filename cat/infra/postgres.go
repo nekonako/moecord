@@ -19,7 +19,7 @@ func newPostgres(c *config.Config) *sqlx.DB {
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create database connection")
-		panic(err)
+		return nil
 	}
 
 	db.SetMaxOpenConns(c.Postgres.MaxOpenConn)

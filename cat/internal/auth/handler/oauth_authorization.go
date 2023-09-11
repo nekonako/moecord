@@ -19,7 +19,7 @@ type ApiError struct {
 
 func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 
-	ctx, span := tracer.Start(r.Context(), "oauth", "handler.authorization")
+	ctx, span := tracer.Start(r.Context(), "handler.authorization")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.OauthRequest{

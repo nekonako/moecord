@@ -20,6 +20,7 @@ import (
 	"github.com/nekonako/moecord/internal/server"
 	"github.com/nekonako/moecord/internal/websocket"
 	"github.com/rs/zerolog/log"
+	otelMiddleware "go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 func main() {
@@ -46,6 +47,8 @@ func main() {
 		}
 	}()
 
+	log.Info().Msg("server is running on " + config.Api.Host + ":" + fmt.Sprint(config.Api.Port))
+
 	go ws.ListenConnection()
 
 	c := make(chan os.Signal, 1)
@@ -65,6 +68,8 @@ func main() {
 func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	r := mux.NewRouter()
+
+	r.Use(otelMiddleware.Middleware(c.Apm.ServiceName))
 
 	oauth := auth.New(c, infra)
 	oauth.InitRouter(r)

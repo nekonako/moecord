@@ -1,0 +1,1 @@
+DROP MATERIALIZED VIEW IF EXISTS messages_by_channel_id;

@@ -20,7 +20,7 @@ func newRedis(c *config.Config) *redis.Client {
 
 	if err := r.Ping(context.Background()).Err(); err != nil {
 		log.Fatal().Msg(err.Error())
-		panic(err)
+		return nil
 	}
 
 	return r

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -12,13 +11,13 @@ import (
 )
 
 func (h *Handler) ListMessage(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "server", "handler.SaveMessage")
+	ctx, span := tracer.Start(r.Context(), "handler.SaveMessage")
 	defer tracer.Finish(span)
 
 	channelID := mux.Vars(r)["channel_id"]
 	userID := ctx.Value(middleware.Claim("user_id")).(string)
 
-	res, err := h.usecase.ListMessage(ctx, []byte(userID), []byte(channelID))
+	res, err := h.usecase.ListMessage(ctx, userID, channelID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
@@ -28,8 +27,6 @@ func (h *Handler) ListMessage(w http.ResponseWriter, r *http.Request) {
 			SendJSON(w)
 		return
 	}
-
-	fmt.Println(res)
 
 	api.NewHttpResponse().
 		WithCode(http.StatusOK).

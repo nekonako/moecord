@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nekonako/moecord/pkg/tracer"
+	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,12 +19,15 @@ type ListMessages struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (u *UseCase) ListMessage(ctx context.Context, userID, channelID []byte) ([]ListMessages, error) {
+func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessages, error) {
 
 	span := tracer.SpanFromContext(ctx, "usecase.ListMessage")
 	defer tracer.Finish(span)
 
-	messages, err := u.repo.ListMessages(ctx, userID, channelID)
+	channelID, _ := ulid.Parse(cID)
+	userID, _ := ulid.Parse(uID)
+
+	messages, err := u.repo.ListMessages(ctx, userID.Bytes(), channelID.Bytes())
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())

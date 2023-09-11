@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/nekonako/moecord/internal/message/repo"
@@ -12,7 +11,6 @@ import (
 )
 
 type SaveMessagRequest struct {
-	ID        ulid.ULID `json:"id"`
 	ChannelID ulid.ULID `json:"channel_id"`
 	SenderID  ulid.ULID `json:"sender_id"`
 	Content   string    `json:"content"`
@@ -22,20 +20,18 @@ type SaveMessagRequest struct {
 
 func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) error {
 
-	span := tracer.SpanFromContext(ctx, "usecase.SaveMessage")
+	ctx, span := tracer.Start(ctx, "usecase.SaveMessage")
 	defer tracer.Finish(span)
 	now := time.Now().UTC()
 
 	message := repo.Message{
-		ID:        m.ID.Bytes(),
-		ChannelID: []byte(m.ChannelID.String()),
+		ID:        ulid.Make().Bytes(),
+		ChannelID: m.ChannelID.Bytes(),
 		SenderID:  m.SenderID.Bytes(),
 		Content:   m.Content,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
-
-	fmt.Println(string(message.ChannelID))
 
 	err := u.repo.SaveMessage(ctx, u.infra.Scylla, message)
 	if err != nil {

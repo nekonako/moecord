@@ -12,7 +12,7 @@ import (
 )
 
 func (h *Handler) ListChannel(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "server", "handler.ListServer")
+	ctx, span := tracer.Start(r.Context(), "handler.ListChannel")
 	defer tracer.Finish(span)
 
 	serverIDStr := mux.Vars(r)["server_id"]

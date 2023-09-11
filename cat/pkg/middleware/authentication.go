@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/pkg/api"
+	"github.com/nekonako/moecord/pkg/tracer"
+	"github.com/rs/zerolog/log"
 )
 
 type Claim string
@@ -16,8 +19,13 @@ type Claim string
 func Authentication(c *config.Config) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, span := tracer.Start(r.Context(), "middleware.authentication")
+			defer tracer.Finish(span)
 			tokenString := extractTokenFromHeader(r)
 			if tokenString == "" {
+				err := errors.New("empty token")
+				tracer.SpanError(span, err)
+				log.Error().Ctx(ctx).Msg(err.Error())
 				api.NewHttpResponse().
 					WithCode(http.StatusUnauthorized).
 					WitMessage("Unauthorized").
@@ -30,14 +38,17 @@ func Authentication(c *config.Config) mux.MiddlewareFunc {
 				return []byte(c.JWT.PrivateKey), nil
 			})
 			if err != nil || !token.Valid {
+				err := errors.New("invalid token")
+				tracer.SpanError(span, err)
+				log.Error().Ctx(ctx).Msg(err.Error())
 				api.NewHttpResponse().
 					WithCode(http.StatusUnauthorized).
 					WitMessage("Unauthorized").
 					SendJSON(w)
 				return
 			}
-			ctx := context.WithValue(r.Context(), Claim("user_id"), claim["sub"])
-			req := r.WithContext(ctx)
+			xCtx := context.WithValue(ctx, Claim("user_id"), claim["sub"])
+			req := r.WithContext(xCtx)
 			*r = *req
 			next.ServeHTTP(w, r)
 		})

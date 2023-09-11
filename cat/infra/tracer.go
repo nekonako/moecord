@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-	"google.golang.org/grpc"
 )
 
 func initTracer(c *config.Config) {
@@ -27,6 +26,7 @@ func initTracer(c *config.Config) {
 		resource.WithProcess(),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
+		resource.WithOS(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(c.Apm.ServiceName),
 		),
@@ -58,7 +58,7 @@ func initTracer(c *config.Config) {
 	traceClient := otlptracegrpc.NewClient(
 		otlptracegrpc.WithInsecure(),
 		otlptracegrpc.WithEndpoint(tracerAgent),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+		// otlptracegrpc.WithDialOption(grpc.WithBlock()),
 	)
 	traceExp, err := otlptrace.New(ctx, traceClient)
 	if err != nil {
@@ -69,11 +69,12 @@ func initTracer(c *config.Config) {
 	tracerProvider := sdktrace.NewTracerProvider(
 		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(res),
+		sdktrace.WithBatcher(traceExp),
 		sdktrace.WithSpanProcessor(bsp),
 	)
 
 	// set global propagator to tracecontext (the default is no-op).
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(tracerProvider)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 }

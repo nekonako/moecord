@@ -16,7 +16,7 @@ func newScylladb(c *config.Config) *gocqlx.Session {
 	session, err := gocqlx.WrapSession(cluster.CreateSession())
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create sycladb session")
-		panic(err)
+		return nil
 	}
 
 	runScyllaMigraton(&session, c.Scylla.Keyspace)
@@ -29,10 +29,11 @@ func runScyllaMigraton(session *gocqlx.Session, keySpace string) {
 	driver, err := scyllaMigration.WithInstance(session.Session, &scyllaMigration.Config{
 		KeyspaceName: keySpace,
 	})
-
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("failed create sycladb migration instance")
+		return
 	}
+
 	m, err := migrate.NewWithDatabaseInstance("file://migration/scylla", keySpace, driver)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed create migration instance")

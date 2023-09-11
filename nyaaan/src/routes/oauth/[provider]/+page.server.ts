@@ -13,22 +13,26 @@ export async function load({ params, url, cookies, fetch }) {
 		method: 'POST'
 	});
 
+	console.log(response)
+
 	const result = await response.json();
 	if (result.code != 200) {
 		throw redirect(307, '/oauth');
 	}
 
 	cookies.set('access_token', result.data.access_token, {
-		httpOnly: true,
-		secure: true,
+		httpOnly: false,
+		secure: false,
 		path: '/'
 	});
 
 	cookies.set('refresh_token', result.data.refresh_token, {
-		httpOnly: true,
-		secure: true,
+		httpOnly: false,
+		secure: false,
 		path: '/'
 	});
 
-	throw redirect(307, '/app');
+	// console.l
+
+	throw redirect(307, '/channel');
 }

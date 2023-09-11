@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/nekonako/moecord/pkg/tracer"
@@ -31,6 +30,7 @@ var MessageByChannelIDMetadata = table.Metadata{
 	Name:    "messages_by_channel_id",
 	Columns: []string{"id", "channel_id", "sender_id", "content", "created_at", "updated_at"},
 	PartKey: []string{"channel_id"},
+	SortKey: []string{"id"},
 }
 
 var MessageTable = table.New(MessageMetadata)
@@ -38,7 +38,7 @@ var MessageByChannelIDTable = table.New(MessageByChannelIDMetadata)
 
 func (r *Repository) SaveMessage(ctx context.Context, scylla *gocqlx.Session, message Message) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveMessage")
+	_, span := tracer.Start(ctx, "repo.SaveMessage")
 	defer tracer.Finish(span)
 
 	q := scylla.Query(MessageTable.Insert()).BindStruct(&message)
@@ -59,14 +59,12 @@ func (r *Repository) ListMessages(ctx context.Context, userID, channelID []byte)
 
 	messages := []Message{}
 	q := r.scylla.Query(MessageByChannelIDTable.Select()).BindMap(qb.M{"channel_id": channelID})
-	fmt.Println(q.Statement())
 	if err := q.Select(&messages); err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed save message")
 		return messages, err
 	}
 
-	fmt.Println(messages, string(channelID))
 	return messages, nil
 
 }

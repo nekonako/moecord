@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "server", "handler.SaveMessage")
+	ctx, span := tracer.Start(r.Context(), "handler.SaveMessage")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.SaveMessagRequest{}
@@ -30,7 +30,7 @@ func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
 	userIDStr := ctx.Value(middleware.Claim("user_id")).(string)
 	userID, _ := ulid.Parse(userIDStr)
 	reqBody.SenderID = userID
-	reqBody.ID = ulid.Make()
+
 	err := h.usecase.SaveMessage(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)

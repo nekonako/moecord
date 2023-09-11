@@ -14,7 +14,7 @@ import (
 
 func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 
-	ctx, span := tracer.Start(r.Context(), "oauth", "handler.redirect")
+	ctx, span := tracer.Start(r.Context(), "handler.redirect")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.CallbackRequest{}

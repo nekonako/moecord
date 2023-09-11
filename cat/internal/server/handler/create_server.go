@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "server", "handler.CreateServer")
+	ctx, span := tracer.Start(r.Context(), "handler.CreateServer")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.CreateServerRequest{}

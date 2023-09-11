@@ -36,7 +36,7 @@ export async function load({ fetch, setHeaders, cookies }) {
 	});
 
 	const firstServerID = servers.data[0].id;
-	const responseChannel = await fetch('/api/servers/' + firstServerID + '/channels');
+	const responseChannel = await fetch('/api/channels/' + firstServerID);
 	const channels: ApiResponse<Channel> = await responseChannel.json();
 
 	const firstChannelID = channels.data[0].id;

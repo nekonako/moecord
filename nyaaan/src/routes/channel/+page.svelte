@@ -7,7 +7,6 @@
 
 	if (browser) {
 		ws = new WebSocket('ws://localhost:4001');
-		console.log(ws);
 		handleMessage(ws);
 	}
 
@@ -26,7 +25,6 @@
 			method: 'POST'
 		});
 		const result = await response.json();
-		console.log(result);
 	}
 
 	function handleMessage(ws: WebSocket) {
