@@ -83,7 +83,7 @@ func (r *Repository) ListServerUser(ctx context.Context, userID ulid.ULID) ([]Se
 	defer tracer.Finish(span)
 
 	query := `
-	SELECT 
+	SELECT
 		s.id,
 		s.owner_id,
 		s.name,

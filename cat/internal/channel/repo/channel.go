@@ -83,7 +83,7 @@ func (r *Repository) ListChannel(ctx context.Context, userID, serverID ulid.ULID
 	defer tracer.Finish(span)
 
 	query := `
-	SELECT 
+	SELECT
 		c.id,
 		c.server_id,
 		c.name,

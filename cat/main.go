@@ -36,10 +36,6 @@ func main() {
 
 	infra := infra.New(config)
 	httpServer := newHttpServer(config, infra)
-	ws, err := websocket.New(config)
-	if err != nil {
-		panic(err)
-	}
 
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil {
@@ -48,8 +44,6 @@ func main() {
 	}()
 
 	log.Info().Msg("server is running on " + config.Api.Host + ":" + fmt.Sprint(config.Api.Port))
-
-	go ws.ListenConnection()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -82,6 +76,9 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	message := message.New(c, infra)
 	message.InitRouter(r)
+
+	ws := websocket.New(c, infra)
+	ws.InitRouter(r)
 
 	origins := handlers.AllowedOrigins([]string{"*"})
 	headers := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin", "Content-Type"})

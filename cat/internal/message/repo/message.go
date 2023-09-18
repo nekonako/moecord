@@ -2,47 +2,42 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/nekonako/moecord/pkg/tracer"
+	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
-	"github.com/scylladb/gocqlx/v2"
-	"github.com/scylladb/gocqlx/v2/qb"
-	"github.com/scylladb/gocqlx/v2/table"
 )
 
 type Message struct {
-	ID        []byte
-	ChannelID []byte
-	SenderID  []byte
-	Content   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        ulid.ULID    `db:"id" json:"id"`
+	ChannelID ulid.ULID    `db:"channel_id" json:"channel_id"`
+	SenderID  ulid.ULID    `db:"sender_id" json:"sender_id"`
+	Content   string       `db:"content" json:"content"`
+	CreatedAt time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt sql.NullTime `db:"updated_at" json:"updated_at"`
 }
 
-var MessageMetadata = table.Metadata{
-	Name:    "messages",
-	Columns: []string{"id", "channel_id", "sender_id", "content", "created_at", "updated_at"},
-	PartKey: []string{"id"},
-}
+func (r *Repository) SaveMessage(ctx context.Context, message Message) error {
 
-var MessageByChannelIDMetadata = table.Metadata{
-	Name:    "messages_by_channel_id",
-	Columns: []string{"id", "channel_id", "sender_id", "content", "created_at", "updated_at"},
-	PartKey: []string{"channel_id"},
-	SortKey: []string{"id"},
-}
-
-var MessageTable = table.New(MessageMetadata)
-var MessageByChannelIDTable = table.New(MessageByChannelIDMetadata)
-
-func (r *Repository) SaveMessage(ctx context.Context, scylla *gocqlx.Session, message Message) error {
-
-	_, span := tracer.Start(ctx, "repo.SaveMessage")
+	ctx, span := tracer.Start(ctx, "repo.SaveMessage")
 	defer tracer.Finish(span)
 
-	q := scylla.Query(MessageTable.Insert()).BindStruct(&message)
-	if err := q.ExecRelease(); err != nil {
+	query := `
+    INSERT INTO message
+    (
+        id,
+        sender_id,
+        channel_id,
+        content,
+        created_at,
+        updated_at
+    )
+    VALUES (:id, :sender_id, :channel_id, :content, :created_at, :updated_at)`
+
+	_, err := r.postgres.NamedExecContext(ctx, query, message)
+	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed save message")
 		return err
@@ -52,16 +47,26 @@ func (r *Repository) SaveMessage(ctx context.Context, scylla *gocqlx.Session, me
 
 }
 
-func (r *Repository) ListMessages(ctx context.Context, userID, channelID []byte) ([]Message, error) {
+func (r *Repository) ListMessages(ctx context.Context, channelID ulid.ULID) ([]Message, error) {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveMessage")
+	span := tracer.SpanFromContext(ctx, "repo.ListMessage")
 	defer tracer.Finish(span)
 
 	messages := []Message{}
-	q := r.scylla.Query(MessageByChannelIDTable.Select()).BindMap(qb.M{"channel_id": channelID})
-	if err := q.Select(&messages); err != nil {
+	query := `
+        SELECT
+            id,
+            sender_id,
+            channel_id,
+            content,
+            created_at,
+            updated_at
+        FROM message WHERE channel_id = $1
+    `
+	err := r.postgres.SelectContext(ctx, &messages, query, channelID)
+	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed save message")
+		log.Error().Err(err).Msg("failed get messages")
 		return messages, err
 	}
 

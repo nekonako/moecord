@@ -5,6 +5,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/nats-io/nats.go"
 	"github.com/nekonako/moecord/config"
+	"github.com/nekonako/moecord/pkg/log"
+	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/redis/go-redis/v9"
 	"github.com/scylladb/gocqlx/v2"
 )
@@ -19,15 +21,14 @@ type Infra struct {
 
 func New(c *config.Config) *Infra {
 	if c.Apm.Enable {
-		initTracer(c)
+		tracer.Init(c.Apm.Host, c.Apm.ServiceName)
 	}
-	initLogger(c)
+	log.Init(c.Apm.LogLevel)
 
 	return &Infra{
 		Redis:      newRedis(c),
 		Postgres:   newPostgres(c),
 		Cloudinary: newCloudinary(c),
 		Nats:       newNats(c),
-		Scylla:     newScylladb(c),
 	}
 }

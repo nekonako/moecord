@@ -13,8 +13,6 @@ export async function load({ params, url, cookies, fetch }) {
 		method: 'POST'
 	});
 
-	console.log(response)
-
 	const result = await response.json();
 	if (result.code != 200) {
 		throw redirect(307, '/oauth');
@@ -31,8 +29,6 @@ export async function load({ params, url, cookies, fetch }) {
 		secure: false,
 		path: '/'
 	});
-
-	// console.l
 
 	throw redirect(307, '/channel');
 }

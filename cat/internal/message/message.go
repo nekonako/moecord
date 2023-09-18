@@ -32,11 +32,11 @@ func (o *Message) InitRouter(r *mux.Router) {
 	v1 := r.PathPrefix("/v1").Subrouter()
 	v1.Use(middleware.Authentication(o.Config))
 
-	repo := repo.New(o.Infra.Postgres, o.Infra.Scylla)
+	repo := repo.New(o.Infra.Postgres)
 	u := usecase.New(o.Config, o.Infra, repo)
 	h := handler.New(o.Config, u)
 
 	v1.HandleFunc("/messages", h.SaveMessage).Methods(http.MethodPost)
-	v1.HandleFunc("/channels/{channel_id}/messages", h.ListMessage).Methods(http.MethodGet)
+	v1.HandleFunc("/messages/channels/{channel_id}", h.ListMessage).Methods(http.MethodGet)
 
 }

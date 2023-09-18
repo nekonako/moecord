@@ -1,10 +1,9 @@
-package infra
+package tracer
 
 import (
 	"context"
 	"time"
 
-	"github.com/nekonako/moecord/config"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -17,9 +16,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func initTracer(c *config.Config) {
+func Init(agent, serviceName string) {
 
-	tracerAgent := c.Apm.Host
+	tracerAgent := agent
 	ctx := context.Background()
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
@@ -28,7 +27,7 @@ func initTracer(c *config.Config) {
 		resource.WithHost(),
 		resource.WithOS(),
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String(c.Apm.ServiceName),
+			semconv.ServiceNameKey.String(serviceName),
 		),
 	)
 	if err != nil {

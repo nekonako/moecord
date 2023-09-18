@@ -13,6 +13,7 @@ import (
 type Channel struct {
 	ID          ulid.ULID `db:"id"`
 	ServerID    ulid.ULID `db:"server_id"`
+	CategoryID  ulid.ULID `db:"category_id"`
 	Name        string    `db:"name"`
 	ChannelType string    `db:"channel_type"`
 	CreatedAt   time.Time `db:"created_at"`
@@ -35,11 +36,12 @@ func (r *Repository) SaveChannel(ctx context.Context, tx *sqlx.Tx, channel []Cha
 	INSERT INTO channel (
 		id,
         server_id,
+        category_id,
 		name,
 		channel_type,
 		created_at,
 		updated_at
-	) VALUES (:id, :server_id, :name, :channel_type, :created_at, :updated_at);
+    ) VALUES (:id, :server_id, :category_id, :name, :channel_type, :created_at, :updated_at);
 	`
 
 	_, err := tx.NamedExecContext(ctx, query, channel)

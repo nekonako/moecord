@@ -1,10 +1,9 @@
-package infra
+package log
 
 import (
 	"os"
 	"time"
 
-	"github.com/nekonako/moecord/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.opentelemetry.io/otel/attribute"
@@ -48,7 +47,7 @@ func (t zerologHook) Run(e *zerolog.Event, level zerolog.Level, message string) 
 
 }
 
-func initLogger(c *config.Config) {
+func Init(level string) {
 
 	now := time.Now().Format(time.DateOnly)
 	file, err := os.OpenFile(
@@ -57,12 +56,12 @@ func initLogger(c *config.Config) {
 		0664,
 	)
 	if err != nil {
-		panic(err)
+		log.Fatal().Msg(err.Error())
 	}
 
-	level, err := zerolog.ParseLevel(c.Apm.LogLevel)
+	lv, err := zerolog.ParseLevel(level)
 	if err != nil {
-		panic(err)
+		log.Fatal().Msg(err.Error())
 	}
 
 	log.Logger = zerolog.New(zerolog.MultiLevelWriter(os.Stdout, file)).
@@ -70,7 +69,7 @@ func initLogger(c *config.Config) {
 		Timestamp().
 		Caller().
 		Logger().
-		Level(level).
-		Hook(&zerologHook{})
+		Level(lv).
+		Hook(zerologHook{})
 
 }

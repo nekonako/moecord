@@ -33,11 +33,8 @@ func Authentication(c *config.Config) mux.MiddlewareFunc {
 				return
 			}
 
-			claim := jwt.MapClaims{}
-			token, err := jwt.ParseWithClaims(tokenString, &claim, func(token *jwt.Token) (interface{}, error) {
-				return []byte(c.JWT.PrivateKey), nil
-			})
-			if err != nil || !token.Valid {
+			claim, err := ValidateToken(tokenString, c.JWT.PrivateKey)
+			if err != nil {
 				err := errors.New("invalid token")
 				tracer.SpanError(span, err)
 				log.Error().Ctx(ctx).Msg(err.Error())
@@ -54,6 +51,24 @@ func Authentication(c *config.Config) mux.MiddlewareFunc {
 		})
 	}
 
+}
+
+func ValidateToken(tokenString, privateKey string) (jwt.MapClaims, error) {
+	claim := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, &claim, func(token *jwt.Token) (interface{}, error) {
+		return []byte(privateKey), nil
+	})
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return claim, errors.New("invalid token")
+	}
+
+	if !token.Valid {
+		return claim, errors.New("invalid token")
+	}
+
+	return claim, nil
 }
 
 func extractTokenFromHeader(r *http.Request) string {

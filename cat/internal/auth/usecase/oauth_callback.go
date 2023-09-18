@@ -173,22 +173,47 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			log.Error().Msg(err.Error())
 			return r, errors.New("failed create server")
 		}
-		textChannelID := ulid.Make()
-		voiceChannelID := ulid.Make()
 
+		textChannelCategoryID := ulid.Make()
+		voiceChannelCategoryID := ulid.Make()
+		channelCategory := []repo.ChannelCategory{
+			{
+				ID:        textChannelCategoryID,
+				ServerID:  serverID,
+				Name:      "Text Channel",
+				CreatedAt: now,
+			},
+			{
+				ID:        voiceChannelCategoryID,
+				ServerID:  serverID,
+				Name:      "Voice Channel",
+				CreatedAt: now,
+			},
+		}
+
+		err = u.repo.CreateChannelCategory(ctx, tx, channelCategory)
+		if err != nil {
+			tracer.SpanError(span, err)
+			log.Error().Msg(err.Error())
+			return r, errors.New("failed create channel category")
+		}
+
+		textGeneralChannelID := ulid.Make()
+		voicGeneralChannelID := ulid.Make()
 		channel := []repo.Channel{
 			{
-				ID:          textChannelID,
+				ID:          textGeneralChannelID,
 				ServerID:    serverID,
-				Name:        "Text Channels",
+				CategoryID:  textChannelCategoryID,
+				Name:        "General",
 				ChannelType: "text",
 				CreatedAt:   now,
 				UpdatedAt:   now,
 			},
 			{
-				ID:          voiceChannelID,
-				ServerID:    serverID,
-				Name:        "Voice Channels",
+				ID:          voicGeneralChannelID,
+				ServerID:    voiceChannelCategoryID,
+				Name:        "General",
 				ChannelType: "voice",
 				CreatedAt:   now,
 				UpdatedAt:   now,
@@ -204,13 +229,13 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		channelMember := []repo.ChannelMember{
 			{
 				ID:        ulid.Make(),
-				ChannelID: textChannelID,
+				ChannelID: textGeneralChannelID,
 				UserID:    userID,
 				CreatedAt: now,
 			},
 			{
 				ID:        ulid.Make(),
-				ChannelID: voiceChannelID,
+				ChannelID: voicGeneralChannelID,
 				UserID:    userID,
 				CreatedAt: now,
 			},

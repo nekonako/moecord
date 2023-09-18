@@ -46,18 +46,14 @@ func runMigration(c *config.Config, db *sqlx.DB) {
 	}
 
 	err = m.Up()
-	if err != nil && err.Error() == "no change" {
+	if err != nil && err == migrate.ErrNoChange {
 		log.Info().Msg("no migration")
 		return
 	}
 
 	if err != nil {
-		log.Error().Err(err).Msg("failed up migration")
-		log.Info().Msg("try down migration to clean dirty migration")
-		if err = m.Down(); err != nil {
-			log.Fatal().Err(err).Msg("failed down migration")
-			return
-		}
+		log.Error().Err(err).Msg("failed run migration")
+		return
 	}
 
 	log.Info().Msg("successfully run migration")
