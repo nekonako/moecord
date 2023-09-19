@@ -26,6 +26,13 @@ type ChannelMember struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
+type ChannelCategory struct {
+	ID        ulid.ULID `db:"id"`
+	ServerID  ulid.ULID `db:"server_id"`
+	Name      string    `db:"name"`
+	CreatedAt time.Time `db:"created_at"`
+}
+
 func (r *Repository) SaveChannel(ctx context.Context, tx *sqlx.Tx, channel []Channel) error {
 
 	span := tracer.SpanFromContext(ctx, "repo.SaveChannel")
@@ -78,7 +85,7 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 
 }
 
-func (r *Repository) ListChannel(ctx context.Context, userID, serverID ulid.ULID) ([]Channel, error) {
+func (r *Repository) ListChannel(ctx context.Context, userID, categoryID ulid.ULID) ([]Channel, error) {
 	span := tracer.SpanFromContext(ctx, "repo.ListChannel")
 	defer tracer.Finish(span)
 
@@ -92,14 +99,63 @@ func (r *Repository) ListChannel(ctx context.Context, userID, serverID ulid.ULID
 		c.updated_at
 	FROM channel AS c
 	INNER JOIN channel_member AS cm ON cm.channel_id = c.id
-	WHERE cm.user_id = $1 AND c.server_id = $2
+	WHERE cm.user_id = $1 AND c.category_id = $2
 	`
 
 	result := []Channel{}
-	err := r.postgres.SelectContext(ctx, &result, query, userID, serverID)
+	err := r.postgres.SelectContext(ctx, &result, query, userID, categoryID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed select channel")
+		return result, err
+	}
+
+	return result, nil
+
+}
+
+func (r *Repository) SaveChannelCategory(ctx context.Context, c ChannelCategory) error {
+	span := tracer.SpanFromContext(ctx, "repo.SaveChannelCategory")
+	defer tracer.Finish(span)
+
+	query := `
+		INSERT INTO channel_category (
+			id,
+			server_id,
+			name,
+			created_at
+		) VALUES (:id, :server_id, :name, :created_at)
+	`
+
+	_, err := r.postgres.NamedExecContext(ctx, query, c)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed create channel category")
+		return err
+	}
+
+	return nil
+
+}
+
+func (r *Repository) ListChannelCategory(ctx context.Context, serverID ulid.ULID) ([]ChannelCategory, error) {
+	span := tracer.SpanFromContext(ctx, "repo.ListChannelCategory")
+	defer tracer.Finish(span)
+
+	query := `
+	SELECT
+	    id,
+        server_id,
+        name,
+        created_at
+    FROM channel_category WHERE server_id = $1
+    `
+
+	result := []ChannelCategory{}
+	err := r.postgres.SelectContext(ctx, &result, query, serverID)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed select channel category")
 		return result, err
 	}
 

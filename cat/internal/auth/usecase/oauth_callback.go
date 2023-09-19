@@ -152,7 +152,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		server := repo.Server{
 			ID:            serverID,
 			OwnerID:       user.ID,
-			Name:          "Direct Messages",
+			Name:          "@me",
 			DirectMessage: true,
 			CreatedAt:     now,
 			UpdatedAt:     now,
@@ -174,19 +174,12 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			return r, errors.New("failed create server")
 		}
 
-		textChannelCategoryID := ulid.Make()
-		voiceChannelCategoryID := ulid.Make()
+		directMessageChannelCategoryID := ulid.Make()
 		channelCategory := []repo.ChannelCategory{
 			{
-				ID:        textChannelCategoryID,
+				ID:        directMessageChannelCategoryID,
 				ServerID:  serverID,
-				Name:      "Text Channel",
-				CreatedAt: now,
-			},
-			{
-				ID:        voiceChannelCategoryID,
-				ServerID:  serverID,
-				Name:      "Voice Channel",
+				Name:      "Direct Messages",
 				CreatedAt: now,
 			},
 		}
@@ -198,54 +191,6 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			return r, errors.New("failed create channel category")
 		}
 
-		textGeneralChannelID := ulid.Make()
-		voicGeneralChannelID := ulid.Make()
-		channel := []repo.Channel{
-			{
-				ID:          textGeneralChannelID,
-				ServerID:    serverID,
-				CategoryID:  textChannelCategoryID,
-				Name:        "General",
-				ChannelType: "text",
-				CreatedAt:   now,
-				UpdatedAt:   now,
-			},
-			{
-				ID:          voicGeneralChannelID,
-				ServerID:    voiceChannelCategoryID,
-				Name:        "General",
-				ChannelType: "voice",
-				CreatedAt:   now,
-				UpdatedAt:   now,
-			},
-		}
-
-		if err := u.repo.SaveChannel(ctx, tx, channel); err != nil {
-			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
-			return r, err
-		}
-
-		channelMember := []repo.ChannelMember{
-			{
-				ID:        ulid.Make(),
-				ChannelID: textGeneralChannelID,
-				UserID:    userID,
-				CreatedAt: now,
-			},
-			{
-				ID:        ulid.Make(),
-				ChannelID: voicGeneralChannelID,
-				UserID:    userID,
-				CreatedAt: now,
-			},
-		}
-
-		if err := u.repo.SaveChannelMember(ctx, tx, channelMember); err != nil {
-			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
-			return r, err
-		}
 	}
 
 	err = tx.Commit()

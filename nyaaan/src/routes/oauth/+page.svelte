@@ -13,10 +13,7 @@
 		<p>Login with</p>
 		<div>
 			{#each providers as provider}
-				<button
-					class="px-2 py-1 bg-gray-200 m-2 rounded-lg"
-					on:click={() => handlleOauth(provider)}
-				>
+				<button class="px-2 py-1 btn m-2 rounded-lg" on:click={() => handlleOauth(provider)}>
 					{provider}
 				</button>
 			{/each}

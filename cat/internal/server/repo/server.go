@@ -22,6 +22,7 @@ type Server struct {
 type ServerMember struct {
 	ID        ulid.ULID `db:"id"`
 	ServerID  ulid.ULID `db:"server_id"`
+	Username  string    `db:"username"`
 	UserID    ulid.ULID `db:"user_id"`
 	CreatedAt time.Time `db:"created_at"`
 }
@@ -97,6 +98,34 @@ func (r *Repository) ListServerUser(ctx context.Context, userID ulid.ULID) ([]Se
 
 	result := []Server{}
 	err := r.postgres.SelectContext(ctx, &result, query, userID)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed get server")
+		return result, err
+	}
+
+	return result, nil
+
+}
+
+func (r *Repository) ListServerMember(ctx context.Context, serverID ulid.ULID) ([]ServerMember, error) {
+	span := tracer.SpanFromContext(ctx, "repo.ListServer")
+	defer tracer.Finish(span)
+
+	query := `
+	SELECT
+		sm.id,
+		sm.user_id,
+		sm.server_id,
+        u.username,
+		sm.created_at
+	FROM server_member AS sm
+    INNER JOIN users As u ON u.id = sm.user_id
+    WHERE sm.server_id = $1
+    `
+
+	result := []ServerMember{}
+	err := r.postgres.SelectContext(ctx, &result, query, serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Err(err).Msg("failed get server")

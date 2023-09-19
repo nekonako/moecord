@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/nekonako/moecord/internal/server/repo"
@@ -69,6 +70,30 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		return err
 	}
 
+	textChannelCategoryID := ulid.Make()
+	voiceChannelCategoryID := ulid.Make()
+	channelCategory := []repo.ChannelCategory{
+		{
+			ID:        textChannelCategoryID,
+			ServerID:  serverID,
+			Name:      "Text Channel",
+			CreatedAt: now,
+		},
+		{
+			ID:        voiceChannelCategoryID,
+			ServerID:  serverID,
+			Name:      "Voice Channel",
+			CreatedAt: now,
+		},
+	}
+
+	err = u.repo.CreateChannelCategory(ctx, tx, channelCategory)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return errors.New("failed create channel category")
+	}
+
 	textChannelID := ulid.Make()
 	voiceChannelID := ulid.Make()
 
@@ -76,6 +101,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		{
 			ID:          textChannelID,
 			ServerID:    serverID,
+			CategoryID:  textChannelCategoryID,
 			Name:        "General",
 			ChannelType: "text",
 			CreatedAt:   now,
@@ -84,6 +110,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		{
 			ID:          voiceChannelID,
 			ServerID:    serverID,
+			CategoryID:  voiceChannelCategoryID,
 			Name:        "General",
 			ChannelType: "voice",
 			CreatedAt:   now,

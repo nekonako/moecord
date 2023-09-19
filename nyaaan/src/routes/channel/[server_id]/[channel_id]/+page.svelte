@@ -1,20 +1,35 @@
 <script lang="ts">
-	import { RiAddLine, RiCloseFill, RiSendPlaneFill } from 'svelte-remixicon';
+	import {
+		RiAddLine,
+		RiChatVoiceLine,
+		RiCloseFill,
+		RiHomeLine,
+		RiMessage2Line,
+		RiCircleLine,
+		RiSendPlaneFill,
+		RiSurroundSoundFill,
+		RiSurroundSoundLine,
+		RiCircleFill
+	} from 'svelte-remixicon';
 	import { browser } from '$app/environment';
+	import type { Message } from './type';
 	export let data;
 	let ws: WebSocket | undefined;
 	let message: string;
-	let messages = data.messages;
+	let messages: Array<Message> = [];
 	let showModal = false;
 	let serverName = '';
-	let selectedServer = data.servers[0].name;
+	let selectedServer = data.selected_server;
+	let newMessage = Array<Message>();
+	let startNewMessage = 0;
+	import S from '$lib/components/server.svelte';
 
 	if (browser) {
 		ws = new WebSocket('ws://localhost:4000/ws');
 		handleMessage(ws);
 	}
 
-	type Message = {
+	type SendMessage = {
 		channel_id: string;
 		content: string;
 	};
@@ -24,8 +39,8 @@
 	};
 
 	async function sendMessage() {
-		const payload: Message = {
-			channel_id: data.channels[0].id,
+		const payload: SendMessage = {
+			channel_id: data.channels[0].channels[0].id,
 			content: message
 		};
 		const response = await fetch('/api/messages', {
@@ -33,6 +48,12 @@
 			method: 'POST'
 		});
 		const result = await response.json();
+	}
+
+	async function getMessageByChannel(channelID: string) {
+		const response = await fetch(`/api/messages/channels/${channelID}`);
+		const result = await response.json();
+		messages = result.data;
 	}
 
 	async function createServer() {
@@ -52,7 +73,7 @@
 
 	function handleMessage(ws: WebSocket) {
 		ws.onmessage = (m) => {
-			messages = [...messages, JSON.parse(m.data)];
+			newMessage = [...newMessage, JSON.parse(m.data)];
 		};
 	}
 </script>
@@ -84,15 +105,25 @@
 		<div class="w-20 flex px-4 flex-col bg-base-300 justify-between items-center">
 			<div>
 				{#each data.servers as server}
-					<div class="mt-2 avatar ring rounded-full">
-						<button class="rounded-full">
-							<img
-								src="https://avatars.githubusercontent.com/u/46141275?v=4"
-								alt="nekonako"
+					{#if server.id == selectedServer.id}
+						<div class="mt-2 avatar ring rounded-full ring-error">
+							<button class="rounded-full">
+								<img src="/kato.jpg" alt="nekonako" class="rounded-full" />
+							</button>
+						</div>
+					{:else}
+						<div class="mt-2 avatar rounded-full">
+							<button
 								class="rounded-full"
-							/>
-						</button>
-					</div>
+								on:click={() => {
+									selectedServer = server;
+									window.location.href = `/channel/${server.id}`;
+								}}
+							>
+								<img src="/kato.jpg" alt="nekonako" class="rounded-full" />
+							</button>
+						</div>
+					{/if}
 				{/each}
 			</div>
 			<div class="mb-2">
@@ -105,25 +136,46 @@
 			</div>
 		</div>
 		<div class="w-1/6 flex flex-col bg-base-200">
-			{selectedServer}
 			<div class="avatar">
-				<div class="w-full h-48 rounded">
-					<img src="kato.jpg" class="inline" alt="kana" />
+				<div class="w-full h-48">
+					<div class="absolute bottom-0 px-4 py-3 bg-base-300/70 w-full flex flex-row items-center">
+						<RiCircleFill class="mr-2 text-info" size="1.5em" />
+						{selectedServer.name}
+					</div>
+					<img src="/kato.jpg" class="inline" alt="kana" />
 				</div>
 			</div>
 			<ul class="menu">
-				{#each data.channels as channel}
-					<li>
+				{#each data.channels as channelCategory}
+					<li class="menu-title">
 						<a href="#">
-							{channel.name}
+							{channelCategory.category_name.toUpperCase()}
 						</a>
 					</li>
+					{#each channelCategory.channels as channel}
+						<li>
+							<a
+								href="#"
+								on:click={() =>
+									(window.location.href = `/channel/${selectedServer.id}/${channel.id}`)}
+							>
+								{#if channel.channel_type == 'text'}
+									<RiMessage2Line size="1.5em" />
+								{:else}
+									<RiChatVoiceLine size="1.5em" />
+								{/if}
+								{channel.name}
+							</a>
+						</li>
+					{/each}
 				{/each}
 			</ul>
 		</div>
 		<div class=" w-3/4 min-h-screen">
-			<div class="flex flex-col overflow-y-auto max-h-screen justify-between scrollbar-hide">
-				<div class="flex flex-col h-full mb-4 px-6">
+			<div
+				class="flex flex-col overflow-y-auto max-h-screen min-h-screen justify-between scrollbar-hide"
+			>
+				<div class="flex flex-col mb-4 px-6">
 					{#each messages as message}
 						<div class="chat chat-start">
 							<div class="chat-image avatar">
@@ -131,9 +183,29 @@
 									<img src="https://avatars.githubusercontent.com/u/46141275?v=4" />
 								</div>
 							</div>
-							<div class="chat-header mb-2 mt-4">
+							<div class="chat-header mb-2 text-xs mt-4 opacity-50">
 								from: {message.sender_id}
-								<time class="text-xs opacity-50">2 hours ago</time>
+								<time>2 hours ago</time>
+							</div>
+							<div class="chat-bubble chat-bubble-primary">{message.content}</div>
+						</div>
+					{/each}
+					{#if newMessage.length > 0}
+						<div class="fle flex row items-center">
+							<div class="my-2 mt-4 bg-error px-2 text-neutral rounded-lg">new</div>
+							<div class="w-full h-px bg-error" />
+						</div>
+					{/if}
+					{#each newMessage as message}
+						<div class="chat chat-start">
+							<div class="chat-image avatar">
+								<div class="w-10 rounded-full">
+									<img src="https://avatars.githubusercontent.com/u/46141275?v=4" />
+								</div>
+							</div>
+							<div class="chat-header mb-2 text-xs opacity-50">
+								from: {message.sender_id}
+								<time>2 hours ago</time>
 							</div>
 							<div class="chat-bubble chat-bubble-primary">{message.content}</div>
 						</div>
@@ -162,6 +234,7 @@
 		<div class="w-1/6 bg-base-200">
 			<div class="flex flex-col justify-between min-h-screen">
 				<div>members</div>
+				<S />
 			</div>
 		</div>
 	</div>

@@ -8,4 +8,6 @@
 * {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+    font-family: 'Figtree', sans-serif;
 }
+
