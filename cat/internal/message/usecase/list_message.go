@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/nekonako/moecord/internal/message/repo"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
@@ -36,16 +35,7 @@ func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessa
 	}
 
 	res := make([]ListMessages, len(messages))
-	user := repo.User{}
 	for i, v := range messages {
-		if i == 0 {
-			user, err = u.repo.GetUser(ctx, v.SenderID)
-			if err != nil {
-				tracer.SpanError(span, err)
-				log.Error().Err(err).Ctx(ctx).Msg(err.Error())
-				return nil, err
-			}
-		}
 		res[i] = ListMessages{
 			ID:        v.ID.String(),
 			SenderID:  v.SenderID.String(),
@@ -53,7 +43,7 @@ func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessa
 			Content:   v.Content,
 			CreatedAt: v.CreatedAt,
 			UpdatedAt: v.UpdatedAt.Time,
-			Username:  user.Username,
+			Username:  v.Username,
 		}
 	}
 

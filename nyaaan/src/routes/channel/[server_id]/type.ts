@@ -26,6 +26,8 @@ export type Message = {
   channel_id: string;
   sender_id: string;
   content: string;
+  username: string;
+  created_at: string
 };
 
 export type Servermember = {

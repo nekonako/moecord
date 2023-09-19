@@ -17,6 +17,7 @@ type Message struct {
 	Content   string       `db:"content" json:"content"`
 	CreatedAt time.Time    `db:"created_at" json:"created_at"`
 	UpdatedAt sql.NullTime `db:"updated_at" json:"updated_at"`
+	Username  string       `db:"username"`
 }
 
 func (r *Repository) SaveMessage(ctx context.Context, message Message) error {
@@ -55,13 +56,16 @@ func (r *Repository) ListMessages(ctx context.Context, channelID ulid.ULID) ([]M
 	messages := []Message{}
 	query := `
         SELECT
-            id,
-            sender_id,
-            channel_id,
-            content,
-            created_at,
-            updated_at
-        FROM message WHERE channel_id = $1
+            m.id,
+            m.sender_id,
+            m.channel_id,
+            m.content,
+            m.created_at,
+            m.updated_at,
+            u.username
+        FROM message AS m
+        INNER JOIN users AS u ON u.id = m.sender_id
+        WHERE m.channel_id = $1
     `
 	err := r.postgres.SelectContext(ctx, &messages, query, channelID)
 	if err != nil {

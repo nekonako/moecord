@@ -5,7 +5,11 @@
 		RiCloseFill,
 		RiMessage2Line,
 		RiSendPlaneFill,
-		RiCircleFill
+		RiCircleFill,
+		RiArrowUpSLine,
+		RiArrowDownSLine,
+		RiSendPlane2Line,
+		RiSendPlaneLine
 	} from 'svelte-remixicon';
 	import { browser } from '$app/environment';
 	import type { Message, Channel } from './type';
@@ -18,6 +22,7 @@
 	let selectedServer = data.selected_server;
 	let newMessage = Array<Message>();
 	let members = data.server_member;
+	let showPopupServer = false;
 
 	if (browser) {
 		ws = new WebSocket('ws://localhost:4000/ws');
@@ -104,7 +109,7 @@
 			<div>
 				{#each data.servers as server}
 					{#if server.id == selectedServer.id}
-						<div class="mt-2 avatar ring rounded-full ring-error">
+						<div class="mt-2 avatar ring rounded-full ring-info">
 							<button class="rounded-full">
 								<img
 									src="https://avatars.githubusercontent.com/u/46141275?v=4"
@@ -114,7 +119,7 @@
 							</button>
 						</div>
 					{:else}
-						<div class="mt-2 avatar rounded-full ring ring-info">
+						<div class="mt-2 avatar rounded-full">
 							<button
 								class="rounded-full"
 								on:click={() => {
@@ -144,13 +149,32 @@
 		<div class="w-1/6 flex flex-col bg-base-200">
 			<div class="avatar">
 				<div class="w-full h-48">
-					<div class="absolute bottom-0 px-4 py-3 bg-base-300/70 w-full flex flex-row items-center">
-						<RiCircleFill class="mr-2 text-info" size="1.5em" />
-						{selectedServer.name}
-					</div>
+					<button on:click={() => (showPopupServer = !showPopupServer)}>
+						<div
+							class="absolute bottom-0 px-4 py-3 bg-base-300/70 w-full flex justify-between flex-row items-center"
+						>
+							<div class="flex flex-row w-full">
+								<RiCircleFill class="mr-2 text-info" size="1.5em" />
+								{selectedServer.name}
+							</div>
+							<RiArrowDownSLine class="text-white text-left" />
+						</div>
+					</button>
 					<img src="/kato.jpg" class="inline" alt="kana" />
 				</div>
 			</div>
+			{#if showPopupServer}
+				<div class="rounded-lg bg-base-300 flex m-2">
+					<ul class="menu menu-md w-full">
+						<li class="">
+							<a>Edit Server Profile </a>
+						</li>
+						<li class="text-error">
+							<a>Leave Server</a>
+						</li>
+					</ul>
+				</div>
+			{/if}
 			<ul class="menu">
 				{#each data.channels as channelCategory}
 					<li class="menu-title">
@@ -195,9 +219,11 @@
 									<img src="https://avatars.githubusercontent.com/u/46141275?v=4" />
 								</div>
 							</div>
-							<div class="chat-header mb-2 text-xs mt-4 opacity-50">
-								from: {message.sender_id}
-								<time>2 hours ago</time>
+							<div class="chat-header mb-2 mt-4 opacity-70">
+								{message.username}
+								<time class="ml-2 text-xs opacity-50"
+									>{new Date(message.created_at).toLocaleString()}</time
+								>
 							</div>
 							<div class="chat-bubble chat-bubble-primary">{message.content}</div>
 						</div>
@@ -216,27 +242,27 @@
 								</div>
 							</div>
 							<div class="chat-header mb-2 text-xs opacity-50">
-								from: {message.sender_id}
-								<time>2 hours ago</time>
+								{message.username}
+								<time>{message.created_at}</time>
 							</div>
 							<div class="chat-bubble chat-bubble-primary">{message.content}</div>
 						</div>
 					{/each}
 				</div>
 				<div class="sticky bottom-0 bg-base-200">
-					<div class="flex flex-row items-center m-4 rounded-lg bg-base-100">
+					<div class="flex flex-row items-center m-4 bg-base-100">
 						<input
 							bind:value={message}
 							type="text"
 							placeholder="Send message"
 							class="input input-lg focus:outline-none w-full placeholder-base-content text-base"
 						/>
-						<div class="h-full flex bg-base-100 min-h-full p-4">
+						<div class="h-full flex bg-base-100 min-h-full p-4 border-l-2 border-l-base-200">
 							<button
 								class="bg-base-100 h-full min-h-full text-white"
 								on:click={() => sendMessage()}
 							>
-								<RiSendPlaneFill size={'2em'} class="text-success" />
+								<RiSendPlane2Line size={'2em'} class="text-primary" />
 							</button>
 						</div>
 					</div>
@@ -247,7 +273,7 @@
 			{#each members as member}
 				<div class="flex flex-row items-center">
 					<div class="avatar online mr-4">
-						<div class="w-10 ring ring-success rounded-full">
+						<div class="w-8 ring ring-success rounded-full">
 							<img src="https://avatars.githubusercontent.com/u/46141275?v=4" alt="profile" />
 						</div>
 					</div>
