@@ -3,7 +3,7 @@ import type { ApiResponse, Channel, Message, Server, Servermember } from './type
 
 export async function load({ fetch, setHeaders, cookies, params }) {
   const responseServer = await fetch('/api/servers');
-  const servers: ApiResponse<Server> = await responseServer.json();
+  const servers: ApiResponse<Array<Server>> = await responseServer.json();
   if (servers.code == 401) {
     throw redirect(307, '/oauth');
   }
@@ -12,11 +12,13 @@ export async function load({ fetch, setHeaders, cookies, params }) {
     Authorization: 'bearer ' + accessToken
   });
 
+  let profile = await fetch('/api/profile')
+  let profileresponse = await profile.json()
+
   let serverID = params.server_id
   const responseChannel = await fetch('/api/channels/' + serverID);
-  const channels: ApiResponse<Channel> = await responseChannel.json();
+  const channels: ApiResponse<Array<Channel>> = await responseChannel.json();
   let selected_server: Server;
-
 
   servers.data.forEach((val) => {
     if (serverID == "@me" && val.name == "@me") {
@@ -27,15 +29,14 @@ export async function load({ fetch, setHeaders, cookies, params }) {
     }
   })
 
-
-  const serverMember = await fetch('/api/servers/member/' + selected_server!.id)
+  const serverMember = await fetch('/api/servers/' + selected_server!.id + '/member')
   const servermemberResult: ApiResponse<Servermember> = await serverMember.json()
-  console.log(servermemberResult)
 
   return {
     servers: servers.data,
     channels: channels.data,
     selected_server: selected_server!,
-    server_member: servermemberResult.data
+    server_member: servermemberResult.data,
+    profile: profileresponse.data
   };
 }

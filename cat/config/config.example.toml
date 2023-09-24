@@ -84,3 +84,7 @@ private_key = ""
 public_key = ""
 access_token_duration = 60 # in minutes
 refresh_token_duration = 7 # in days
+
+[livekit]
+api_key = ""
+api_secret = ""

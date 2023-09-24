@@ -56,6 +56,7 @@ type Config struct {
 	Websocket  Websocket      `mapstructure:"websocket"`
 	Scylla     Scylla         `mapstructure:"scylla"`
 	JWT        JWT            `mapstructure:"jwt"`
+	LiveKit    LiveKit        `mapstructure:"livekit"`
 }
 
 type Postgres struct {
@@ -138,4 +139,9 @@ type JWT struct {
 	PrivateKey           string `mapstructure:"private_key"`
 	AccessTokenDuration  int    `mapstructure:"access_token_duration"`
 	RefreshTokenDuration int    `mapstructure:"refresh_token_duration"`
+}
+
+type LiveKit struct {
+	ApiKey    string `mapstructure:"api_key"`
+	ApiSecret string `mapstructure:"api_secret"`
 }

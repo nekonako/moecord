@@ -15,6 +15,7 @@ type ListServerResponse struct {
 	OwnerID       ulid.ULID `json:"owner_id"`
 	Name          string    `json:"name"`
 	DirectMessage bool      `json:"direct_message"`
+	Avatar        string    `json:"avatar"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

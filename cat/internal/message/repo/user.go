@@ -11,6 +11,7 @@ import (
 type User struct {
 	ID       ulid.ULID `db:"id"`
 	Username string    `db:"username"`
+	Avatar   string    `db:"avatar"`
 }
 
 func (r *Repository) GetUser(ctx context.Context, id ulid.ULID) (User, error) {
@@ -18,7 +19,7 @@ func (r *Repository) GetUser(ctx context.Context, id ulid.ULID) (User, error) {
 	defer tracer.Finish(span)
 
 	result := User{}
-	query := `SELECT id, username FROM users WHERE id = $1`
+	query := `SELECT id, username, avatar FROM users WHERE id = $1`
 	err := r.postgres.GetContext(ctx, &result, query, id)
 	if err != nil {
 		tracer.SpanError(span, err)

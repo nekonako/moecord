@@ -11,13 +11,14 @@ import (
 )
 
 type Message struct {
-	ID        ulid.ULID    `db:"id" json:"id"`
-	ChannelID ulid.ULID    `db:"channel_id" json:"channel_id"`
-	SenderID  ulid.ULID    `db:"sender_id" json:"sender_id"`
-	Content   string       `db:"content" json:"content"`
-	CreatedAt time.Time    `db:"created_at" json:"created_at"`
-	UpdatedAt sql.NullTime `db:"updated_at" json:"updated_at"`
+	ID        ulid.ULID    `db:"id"`
+	ChannelID ulid.ULID    `db:"channel_id"`
+	SenderID  ulid.ULID    `db:"sender_id"`
+	Content   string       `db:"content"`
+	CreatedAt time.Time    `db:"created_at"`
+	UpdatedAt sql.NullTime `db:"updated_at"`
 	Username  string       `db:"username"`
+	Avatar    string       `db:"avatar"`
 }
 
 func (r *Repository) SaveMessage(ctx context.Context, message Message) error {
@@ -62,10 +63,11 @@ func (r *Repository) ListMessages(ctx context.Context, channelID ulid.ULID) ([]M
             m.content,
             m.created_at,
             m.updated_at,
-            u.username
+            u.username,
+            u.avatar
         FROM message AS m
         INNER JOIN users AS u ON u.id = m.sender_id
-        WHERE m.channel_id = $1
+        WHERE m.channel_id = $1 ORDER BY m.id ASC
     `
 	err := r.postgres.SelectContext(ctx, &messages, query, channelID)
 	if err != nil {

@@ -26,6 +26,8 @@ var (
 	ErrFailedGetUserInfo   = errors.New("failed get user info")
 )
 
+const servervatar = "https://res.cloudinary.com/da9bihi2v/image/upload/v1695292886/moecord/tzqgovnkhdaqcjnyj7t3.jpg"
+
 type CallbackRequest struct {
 	Provider          string `json:"provider" validate:"required,oneof=github google discord"`
 	AuthorizationCode string `json:"authorization_code" validate:"required"`
@@ -154,6 +156,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			OwnerID:       user.ID,
 			Name:          "@me",
 			DirectMessage: true,
+			Avatar:        servervatar,
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
@@ -200,7 +203,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		return r, errors.New("failed commit transaction")
 	}
 
-	accessToken, refreshToken, err := u.generateToken(user.ID)
+	accessToken, refreshToken, err := u.generateToken(user.ID, user.Username)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
@@ -416,14 +419,15 @@ func (u *UseCase) discordTokenExchange(authCode string) (string, error) {
 
 }
 
-func (u *UseCase) generateToken(id ulid.ULID) (string, string, error) {
+func (u *UseCase) generateToken(id ulid.ULID, username string) (string, string, error) {
 
 	now := time.Now().UTC()
 	secretKey := []byte(u.config.JWT.PrivateKey)
 	claims := jwt.MapClaims{
-		"iat": now.Unix(),
-		"exp": now.Add(time.Minute * time.Duration(u.config.JWT.AccessTokenDuration)).Unix(),
-		"sub": id,
+		"iat":      now.Unix(),
+		"exp":      now.Add(time.Minute * time.Duration(u.config.JWT.AccessTokenDuration)).Unix(),
+		"sub":      id,
+		"username": username,
 	}
 
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)

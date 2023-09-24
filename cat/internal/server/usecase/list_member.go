@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/nekonako/moecord/pkg/tracer"
@@ -14,7 +13,8 @@ import (
 type ListServerMemberResponse struct {
 	ID        ulid.ULID `json:"id"`
 	UserID    ulid.ULID `json:"user_id"`
-	ServerID  ulid.ULID `json:"server_ud"`
+	ServerID  ulid.ULID `json:"server_id"`
+	Avatar    string    `json:"avatar"`
 	Username  string    `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -38,8 +38,6 @@ func (u *UseCase) ListServerMember(ctx context.Context, serverID string) ([]List
 		return nil, errors.New("failed get list server")
 	}
 
-	fmt.Println("-=", server, serverID)
-
 	res := make([]ListServerMemberResponse, len(server))
 	for i, v := range server {
 		res[i] = ListServerMemberResponse{
@@ -47,6 +45,7 @@ func (u *UseCase) ListServerMember(ctx context.Context, serverID string) ([]List
 			UserID:    v.UserID,
 			ServerID:  v.ServerID,
 			Username:  v.Username,
+			Avatar:    v.Avatar,
 			CreatedAt: v.CreatedAt,
 		}
 	}

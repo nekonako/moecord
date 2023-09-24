@@ -4,6 +4,6 @@ CREATE TABLE IF NOT EXISTS "users" (
     "email"         VARCHAR(255)    NOT NULL,
     "created_at"    TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     "updated_at"    TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    CONSTRAINT user_email_unique    UNIQUE (email),
-    CONSTRAINT user_username_unique UNIQUE (username)
+    CONSTRAINT unique_user_email    UNIQUE (email),
+    CONSTRAINT unique_user_username UNIQUE (username)
 );

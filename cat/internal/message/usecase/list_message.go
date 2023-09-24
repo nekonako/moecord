@@ -18,6 +18,7 @@ type ListMessages struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Username  string    `json:"username"`
+	Avatar    string    `json:"avatar"`
 }
 
 func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessages, error) {
@@ -44,6 +45,7 @@ func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessa
 			CreatedAt: v.CreatedAt,
 			UpdatedAt: v.UpdatedAt.Time,
 			Username:  v.Username,
+			Avatar:    v.Avatar,
 		}
 	}
 

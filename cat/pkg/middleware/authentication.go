@@ -45,6 +45,7 @@ func Authentication(c *config.Config) mux.MiddlewareFunc {
 				return
 			}
 			xCtx := context.WithValue(ctx, Claim("user_id"), claim["sub"])
+			xCtx = context.WithValue(xCtx, Claim("username"), claim["username"])
 			req := r.WithContext(xCtx)
 			*r = *req
 			next.ServeHTTP(w, r)

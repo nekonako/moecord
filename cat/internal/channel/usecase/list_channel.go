@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"context"
-	"fmt"
+
 	"time"
 
 	"github.com/nekonako/moecord/internal/channel/repo"
@@ -85,7 +85,6 @@ func (u *UseCase) ListChannel(ctx context.Context, userID ulid.ULID, serverId st
 		})
 	}
 
-	fmt.Println(res)
 	return res, nil
 
 }

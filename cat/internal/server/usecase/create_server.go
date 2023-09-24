@@ -12,6 +12,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const servervatar = "https://res.cloudinary.com/da9bihi2v/image/upload/v1695292886/moecord/tzqgovnkhdaqcjnyj7t3.jpg"
+
 type CreateServerRequest struct {
 	Name string `json:"name" validate:"required"`
 }
@@ -47,6 +49,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		OwnerID:       userID,
 		Name:          input.Name,
 		DirectMessage: false,
+		Avatar:        servervatar,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}

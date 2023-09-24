@@ -79,3 +79,32 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 	return nil
 
 }
+
+func (r *Repository) GetPublicChannel(ctx context.Context, serverID ulid.ULID) ([]Channel, error) {
+
+	span := tracer.SpanFromContext(ctx, "repo.ListServer")
+	defer tracer.Finish(span)
+
+	query := `
+	SELECT
+		id,
+		server_id,
+        category_id,
+		name,
+        channel_type,
+		created_at,
+		updated_at
+	FROM channel WHERE server_id = $1 AND is_private = false
+	`
+
+	result := []Channel{}
+	err := r.postgres.SelectContext(ctx, &result, query, serverID)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Err(err).Msg("failed get server")
+		return result, err
+	}
+
+	return result, nil
+
+}

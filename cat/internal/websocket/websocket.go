@@ -2,30 +2,36 @@ package websocket
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"fmt"
-	"net"
-	"net/http"
-	"sync"
-	"time"
-
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/gorilla/mux"
+	"github.com/livekit/protocol/auth"
 	"github.com/nats-io/nats.go"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
+	"github.com/nekonako/moecord/internal/message/usecase"
 	"github.com/nekonako/moecord/pkg/api"
 	"github.com/nekonako/moecord/pkg/middleware"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
+	"net"
+	"net/http"
+	"sync"
+	"time"
 )
 
 type conn struct {
 	*sync.RWMutex
-	conn map[string][]net.Conn
+	channels map[string]map[string]*myConn
+	users    map[string]bool
+	servers  map[string]map[string]*myConn
+}
+
+type myConn struct {
+	net.Conn
+	userid ulid.ULID
 }
 
 var (
@@ -39,37 +45,39 @@ type websocket struct {
 }
 
 type channel struct {
-	ID ulid.ULID `db:"channel_id"`
+	ID ulid.ULID `db:"id"`
 }
 
-type Message struct {
-	ID        ulid.ULID    `json:"id"`
-	ChannelID ulid.ULID    `json:"channel_id"`
-	SenderID  ulid.ULID    `json:"sender_id"`
-	Content   string       `json:"content"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt sql.NullTime `json:"updated_at"`
+type server struct {
+	ID ulid.ULID `db:"id"`
+}
+
+type TypingMessage struct {
+	ChannelID ulid.ULID `json:"channel_id"`
+	UserID    ulid.ULID `json:"user_id"`
+	ServerID  ulid.ULID `json:"server_id"`
 }
 
 func New(c *config.Config, infra *infra.Infra) *websocket {
-
 	connOnce.Do(func() {
 		connMap = &conn{
-			conn:    make(map[string][]net.Conn),
-			RWMutex: &sync.RWMutex{},
+			RWMutex:  &sync.RWMutex{},
+			channels: make(map[string]map[string]*myConn),
+			users:    make(map[string]bool),
+			servers:  make(map[string]map[string]*myConn),
 		}
 	})
-
 	return &websocket{
 		infra:  infra,
 		config: c,
 	}
-
 }
 
 func (ws *websocket) InitRouter(r *mux.Router) {
+	r.HandleFunc("/v1/room/token", ws.CreeteVoiceRoomToken).Methods(http.MethodGet)
 	r.HandleFunc("/ws", ws.AcceptConnection)
 	go ws.Sub()
+	go ws.SubTyping()
 }
 
 func (w *websocket) GetUserChannel(ctx context.Context, userID ulid.ULID) ([]channel, error) {
@@ -77,7 +85,34 @@ func (w *websocket) GetUserChannel(ctx context.Context, userID ulid.ULID) ([]cha
 	defer tracer.Finish(span)
 
 	result := []channel{}
-	query := `SELECT channel_id FROM channel_member WHERE user_id = $1`
+	query := `
+       SELECT
+         distinct(c.id)
+       FROM channel AS c
+       LEFT JOIN channel_member AS cm ON cm.channel_id = c.id
+       WHERE (c.is_private = false OR cm.user_id = $1)
+    `
+	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Msg(err.Error())
+		return result, err
+	}
+
+	return result, nil
+
+}
+
+func (w *websocket) GetUserServer(ctx context.Context, userID ulid.ULID) ([]server, error) {
+	ctx, span := tracer.Start(ctx, "websocket.GetUserChannel")
+	defer tracer.Finish(span)
+
+	result := []server{}
+	query := `
+       SELECT
+        server_id as id
+       FROM server_member WHERE user_id = $1
+       `
 	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
@@ -129,32 +164,151 @@ func (cat *websocket) AcceptConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	servers, err := cat.GetUserServer(ctx, userID)
+	if err != nil {
+		api.NewHttpResponse().
+			WithCode(http.StatusBadGateway).
+			WithError(err)
+		return
+	}
+
 	connMap.Lock()
+	con := &myConn{
+		userid: userID,
+		Conn:   conn,
+	}
+	chanArr := []string{}
+	serverArr := []string{}
 	for _, v := range channels {
-		connMap.conn[v.ID.String()] = append(connMap.conn[v.ID.String()], conn)
+		_, connChanExists := connMap.channels[v.ID.String()]
+		if !connChanExists {
+			connMap.channels[v.ID.String()] = make(map[string]*myConn)
+		}
+		connMap.channels[v.ID.String()][userID.String()] = con
+		chanArr = append(chanArr, v.ID.String())
+	}
+
+	for _, v := range servers {
+		_, connServerExists := connMap.servers[v.ID.String()]
+		if !connServerExists {
+			connMap.servers[v.ID.String()] = make(map[string]*myConn)
+		}
+		connMap.servers[v.ID.String()][userIDStr] = con
+		serverArr = append(serverArr, v.ID.String())
 	}
 	connMap.Unlock()
+
+	go cat.ListenConnection(serverArr, chanArr, userIDStr, conn)
 
 }
 
 func (w *websocket) Sub() {
 	w.infra.Nats.Subscribe("NEW_CHANNEL_MESSAGE", func(m *nats.Msg) {
-		fmt.Printf("Received a message: %s\n", string(m.Data))
-		message := Message{}
-
+		message := api.WebSockerMessage[usecase.SaveMessageResponse]{}
 		err := json.Unmarshal(m.Data, &message)
 		if err != nil {
 			log.Error().Msg(err.Error())
 		}
-
-		if c, ok := connMap.conn[message.ChannelID.String()]; ok {
-			go w.broadcastChannel(m.Data, c)
+		if c, ok := connMap.channels[message.Data.ChannelID.String()]; ok {
+			go w.broadcastChannel(message.Data, m.Data, c)
+			m.AckSync()
 		}
 	})
 }
 
-func (w *websocket) broadcastChannel(m []byte, conn []net.Conn) {
+func (w *websocket) SubTyping() {
+	w.infra.Nats.Subscribe("TYPING", func(m *nats.Msg) {
+		message := api.WebSockerMessage[TypingMessage]{}
+		err := json.Unmarshal(m.Data, &message)
+		if err != nil {
+			log.Error().Msg(err.Error())
+		}
+		if c, ok := connMap.channels[message.Data.ChannelID.String()]; ok {
+			go func(m any, mb []byte, conn map[string]*myConn) {
+				for _, v := range conn {
+					wsutil.WriteServerMessage(v.Conn, 0x1, mb)
+				}
+			}(message, m.Data, c)
+			m.AckSync()
+		}
+	})
+}
+
+func (w *websocket) broadcastChannel(m usecase.SaveMessageResponse, mb []byte, conn map[string]*myConn) {
 	for _, c := range conn {
-		wsutil.WriteServerMessage(c, 0x1, m)
+		if c.userid == m.SenderID {
+			continue
+		}
+		wsutil.WriteServerMessage(c.Conn, 0x1, mb)
+	}
+}
+
+func (cat *websocket) CreeteVoiceRoomToken(w http.ResponseWriter, r *http.Request) {
+
+	at := auth.NewAccessToken(cat.config.LiveKit.ApiKey, cat.config.LiveKit.ApiSecret)
+	grant := &auth.VideoGrant{
+		RoomJoin: true,
+		Room:     "1",
+	}
+	at.AddGrant(grant).
+		SetIdentity("xxxx").
+		SetValidFor(time.Hour)
+
+	token, err := at.ToJWT()
+	if err != nil {
+		log.Error().Msg(err.Error())
+		api.NewHttpResponse().
+			WithCode(http.StatusInternalServerError).
+			WitMessage("internal server error").
+			SendJSON(w)
+		return
+	}
+
+	api.NewHttpResponse().WithData(map[string]string{
+		"token": token,
+	}).WithCode(200).SendJSON(w)
+
+}
+
+func (w *websocket) ListenConnection(serverID, channelID []string, userID string, c net.Conn) {
+	defer func() {
+		c.Close()
+	}()
+	for {
+		m, _, err := wsutil.ReadClientData(c)
+		if err != nil {
+			log.Info().Msg("failed read data")
+			connMap.Lock()
+			delete(connMap.users, userID)
+			for _, v := range serverID {
+				delete(connMap.servers[v], userID)
+				for _, vv := range connMap.servers[v] {
+					x := api.WebSockerMessage[any]{
+						EventID: "PAIR_CLOSED",
+						Data: map[string]string{
+							"user_id": userID,
+						},
+					}
+					xx, _ := json.Marshal(x)
+					wsutil.WriteServerMessage(vv.Conn, 0x1, xx)
+				}
+			}
+			for _, v := range channelID {
+				delete(connMap.channels[v], userID)
+			}
+			connMap.Unlock()
+			return
+		}
+		mm := api.WebSockerMessage[TypingMessage]{}
+		err = json.Unmarshal(m, &mm)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			continue
+		}
+		if mm.EventID == "STOP_TYPING" {
+			for _, v := range connMap.servers[mm.Data.ServerID.String()] {
+				wsutil.WriteServerMessage(v.Conn, 0x1, m)
+			}
+		}
 	}
 }

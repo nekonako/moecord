@@ -36,7 +36,9 @@ func (o *Channel) InitRouter(r *mux.Router) {
 	u := usecase.New(o.Config, o.Infra, repo)
 	h := handler.New(o.Config, u)
 
+	v1.HandleFunc("/channels", h.CreateChannel).Methods(http.MethodPost)
 	v1.HandleFunc("/channels/categories", h.CreateChannelCategory).Methods(http.MethodPost)
 	v1.HandleFunc("/channels/{server_id}", h.ListChannel).Methods(http.MethodGet)
+	v1.HandleFunc("/channels/{channel_id}/typing", h.Typing).Methods(http.MethodPost)
 
 }

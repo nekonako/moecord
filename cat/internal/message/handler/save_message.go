@@ -31,7 +31,7 @@ func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
 	userID, _ := ulid.Parse(userIDStr)
 	reqBody.SenderID = userID
 
-	err := h.usecase.SaveMessage(ctx, reqBody)
+	res, err := h.usecase.SaveMessage(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
@@ -44,7 +44,7 @@ func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
 
 	api.NewHttpResponse().
 		WithCode(http.StatusOK).
-		WithData(reqBody).
+		WithData(res).
 		SendJSON(w)
 
 }

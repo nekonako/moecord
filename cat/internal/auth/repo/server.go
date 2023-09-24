@@ -15,6 +15,7 @@ type Server struct {
 	OwnerID       ulid.ULID `db:"owner_id"`
 	Name          string    `db:"name"`
 	DirectMessage bool      `db:"direct_message"`
+	Avatar        string    `db:"avatar"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 }
@@ -37,9 +38,10 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 			owner_id,
 			name,
 			direct_message,
+            avatar,
 			created_at,
 			updated_at
-		) VALUES (:id, :owner_id, :name, :direct_message, :created_at, :updated_at)
+        ) VALUES (:id, :owner_id, :name, :direct_message, :avatar, :created_at, :updated_at)
 	`
 
 	_, err := tx.NamedExecContext(ctx, query, server)

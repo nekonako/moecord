@@ -38,6 +38,8 @@ func (o *Server) InitRouter(r *mux.Router) {
 
 	v1.HandleFunc("/servers", h.ListServer).Methods(http.MethodGet)
 	v1.HandleFunc("/servers", h.CreateServer).Methods(http.MethodPost)
-	v1.HandleFunc("/servers/member/{server_id}", h.ListServerMember).Methods(http.MethodGet)
+	v1.HandleFunc("/servers", h.UpdateServer).Methods(http.MethodPut)
+	v1.HandleFunc("/servers/{server_id}/member", h.ListServerMember).Methods(http.MethodGet)
+	v1.HandleFunc("/servers/{server_id}/member/invite", h.InviteServerMember).Methods(http.MethodGet)
 
 }
