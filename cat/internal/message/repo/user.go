@@ -14,8 +14,8 @@ type User struct {
 	Avatar   string    `db:"avatar"`
 }
 
-func (r *Repository) GetUser(ctx context.Context, id ulid.ULID) (User, error) {
-	ctx, span := tracer.Start(ctx, "repo.SaveMessage")
+func (r *Repository) GetUserByID(ctx context.Context, id ulid.ULID) (User, error) {
+	ctx, span := tracer.Start(ctx, "repo.GetUserByID")
 	defer tracer.Finish(span)
 
 	result := User{}
@@ -23,7 +23,7 @@ func (r *Repository) GetUser(ctx context.Context, id ulid.ULID) (User, error) {
 	err := r.postgres.GetContext(ctx, &result, query, id)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed save message")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

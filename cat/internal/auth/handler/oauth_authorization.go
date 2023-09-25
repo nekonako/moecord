@@ -19,7 +19,7 @@ type ApiError struct {
 
 func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 
-	ctx, span := tracer.Start(r.Context(), "handler.authorization")
+	ctx, span := tracer.Start(r.Context(), "handler.Authorization")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.OauthRequest{
@@ -29,7 +29,7 @@ func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 	url, err := h.usecase.Authorization(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		if ok, ve := validation.IsValidationError(err); ok {
 			api.NewHttpResponse().
 				WithCode(http.StatusBadRequest).

@@ -43,10 +43,10 @@ func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) (SaveMes
 	usedStr := ctx.Value(middleware.Claim("user_id")).(string)
 	userID, _ := ulid.Parse(usedStr)
 
-	user, err := u.repo.GetUser(ctx, userID)
+	user, err := u.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return response, err
 	}
 
@@ -59,10 +59,10 @@ func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) (SaveMes
 		UpdatedAt: sql.NullTime{},
 	}
 
-	err = u.repo.SaveMessage(ctx, message)
+	err = u.repo.CreateMessage(ctx, message)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return response, err
 	}
 
@@ -77,7 +77,7 @@ func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) (SaveMes
 		Avatar:         user.Avatar,
 	}
 
-	wm := api.WebSockerMessage[SaveMessageResponse]{
+	wm := api.WebSocketMessage[SaveMessageResponse]{
 		EventID: "NEW_CHANNEL_MESSAGE",
 		Data:    response,
 	}

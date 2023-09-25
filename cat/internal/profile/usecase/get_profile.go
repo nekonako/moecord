@@ -20,7 +20,7 @@ type Profile struct {
 }
 
 func (u *UseCase) GetProfile(ctx context.Context, userID string) (Profile, error) {
-	span := tracer.SpanFromContext(ctx, "usecase.ListMessage")
+	span := tracer.SpanFromContext(ctx, "usecase.GetProfile")
 	defer tracer.Finish(span)
 
 	res := Profile{}
@@ -29,8 +29,8 @@ func (u *UseCase) GetProfile(ctx context.Context, userID string) (Profile, error
 	user, err := u.repo.GetUserByID(ctx, id)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Ctx(ctx).Msg(err.Error())
-		return res, errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return res, errors.New("failed get profile")
 	}
 
 	res = Profile{

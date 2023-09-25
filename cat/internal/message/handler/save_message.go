@@ -19,7 +19,7 @@ func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
 	reqBody := usecase.SaveMessagRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -34,7 +34,7 @@ func (h *Handler) SaveMessage(w http.ResponseWriter, r *http.Request) {
 	res, err := h.usecase.SaveMessage(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").

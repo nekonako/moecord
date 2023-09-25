@@ -20,13 +20,13 @@ type UpdateServerRequest struct {
 }
 
 func (u *UseCase) UpdateServer(ctx context.Context, p UpdateServerRequest) error {
-	span := tracer.SpanFromContext(ctx, "usecase.ListServer")
+	span := tracer.SpanFromContext(ctx, "usecase.UpdateServer")
 	defer tracer.Finish(span)
 
 	server, err := u.repo.GetServerByID(ctx, p.ID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return errors.New("failed update server")
 	}
 
@@ -52,7 +52,7 @@ func (u *UseCase) UpdateServer(ctx context.Context, p UpdateServerRequest) error
 	err = u.repo.UpdateServer(ctx, s)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return errors.New("failed update server")
 	}
 

@@ -18,7 +18,7 @@ type CreateChannelRequest struct {
 }
 
 func (u *UseCase) CreateChannel(ctx context.Context, p CreateChannelRequest) error {
-	span := tracer.SpanFromContext(ctx, "usecase.CreateChannelCategory")
+	span := tracer.SpanFromContext(ctx, "usecase.CreateChannel")
 	defer tracer.Finish(span)
 
 	now := time.Now().UTC()
@@ -32,10 +32,10 @@ func (u *UseCase) CreateChannel(ctx context.Context, p CreateChannelRequest) err
 		UpdatedAt:   now,
 	}
 
-	err := u.repo.SaveChannel(ctx, e)
+	err := u.repo.CreateChannel(ctx, e)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 

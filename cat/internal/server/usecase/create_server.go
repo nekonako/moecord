@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/nekonako/moecord/internal/server/repo"
@@ -54,7 +53,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		UpdatedAt:     now,
 	}
 
-	if err := u.repo.SaveServer(ctx, tx, server); err != nil {
+	if err := u.repo.CreateServer(ctx, tx, server); err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return err
@@ -67,7 +66,7 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		CreatedAt: now,
 	}
 
-	if err := u.repo.SaveServerMember(ctx, tx, serverMember); err != nil {
+	if err := u.repo.CreateServerMember(ctx, tx, serverMember); err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		return err
@@ -93,8 +92,8 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 	err = u.repo.CreateChannelCategory(ctx, tx, channelCategory)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("failed create channel category")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	textChannelID := ulid.Make()
@@ -121,9 +120,9 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		},
 	}
 
-	if err := u.repo.SaveChannel(ctx, tx, channel); err != nil {
+	if err := u.repo.CreateChannel(ctx, tx, channel); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -142,15 +141,15 @@ func (u *UseCase) CreateServer(ctx context.Context, userID ulid.ULID, input Crea
 		},
 	}
 
-	if err := u.repo.SaveChannelMember(ctx, tx, channelMember); err != nil {
+	if err := u.repo.CreateChannelMember(ctx, tx, channelMember); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
 	if err = tx.Commit(); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 

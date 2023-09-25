@@ -19,12 +19,12 @@ func New() (*Config, error) {
 		return nil, err
 	}
 
-	privateKey, err := readPublicKey("config/private_key.pem")
+	privateKey, err := readKey("config/private_key.pem")
 	if err != nil {
 		return nil, err
 	}
 
-	publicKey, err := readPublicKey("config/public_key.pem")
+	publicKey, err := readKey("config/public_key.pem")
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func New() (*Config, error) {
 
 }
 
-func readPublicKey(filepath string) (string, error) {
+func readKey(filepath string) (string, error) {
 	keyBytes, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return "", err
@@ -54,7 +54,6 @@ type Config struct {
 	Cloudinary Cloudinary     `mapstructure:"cloudinary"`
 	Nats       Nats           `mapstructure:"nats"`
 	Websocket  Websocket      `mapstructure:"websocket"`
-	Scylla     Scylla         `mapstructure:"scylla"`
 	JWT        JWT            `mapstructure:"jwt"`
 	LiveKit    LiveKit        `mapstructure:"livekit"`
 }
@@ -127,11 +126,6 @@ type Nats struct {
 type Websocket struct {
 	Host string `mapstructure:"host"`
 	Port int    `mapstructure:"port"`
-}
-
-type Scylla struct {
-	Host     string `mapstructure:"host"`
-	Keyspace string `mapstructure:"keyspace"`
 }
 
 type JWT struct {

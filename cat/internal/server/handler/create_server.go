@@ -19,7 +19,7 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 	reqBody := usecase.CreateServerRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -31,7 +31,7 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 	id, err := ulid.Parse(userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -40,7 +40,7 @@ func (h *Handler) CreateServer(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.usecase.CreateServer(ctx, id, reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").

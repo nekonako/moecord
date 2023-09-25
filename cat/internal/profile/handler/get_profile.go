@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handler.SaveMessage")
+	ctx, span := tracer.Start(r.Context(), "handler.GetProfile")
 	defer tracer.Finish(span)
 
 	userID := ctx.Value(middleware.Claim("user_id")).(string)
@@ -18,7 +18,7 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	res, err := h.usecase.GetProfile(ctx, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").

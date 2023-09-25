@@ -5,9 +5,7 @@
 		RiCircleFill,
 		RiArrowDownSLine,
 		RiSettings4Line,
-		RiCloseLine,
-		RiChat3Line,
-		RiChat1Line
+		RiCloseLine
 	} from 'svelte-remixicon';
 	import type { Channel, Profile, Server } from './type';
 	import { ShowServerSettingModal, ShowUserSettingModal, currentChannel } from './store';

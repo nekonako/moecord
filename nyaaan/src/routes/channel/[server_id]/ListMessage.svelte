@@ -17,6 +17,7 @@
 		RemoteTrack,
 		RemoteParticipant
 	} from 'livekit-client';
+	import { browser } from '$app/environment';
 
 	let localTrack: HTMLMediaElement;
 	let remoteTrack: HTMLMediaElement;
@@ -28,6 +29,9 @@
 	let newMessage = Array<Message>();
 	let message: string;
 	let messageEl: HTMLElement;
+	let timer: number | undefined;
+
+	$: typing(message);
 
 	function handleMessage(ws: WebSocket) {
 		ws.onmessage = (m) => {
@@ -77,19 +81,8 @@
 	};
 
 	async function sendMessage() {
-		if (!message) {
-			return;
-		}
-
-		let stopTyping = {
-			event_id: 'STOP_TYPING',
-			data: {
-				user_id: profile.id,
-				channel_id: $currentChannel.channel_id,
-				server_id: server.id
-			}
-		};
-		ws.send(JSON.stringify(stopTyping));
+		if (!message) return;
+		stopTyping();
 
 		const payload: SendMessage = {
 			channel_id: $currentChannel.channel_id,
@@ -170,11 +163,39 @@
 		track.attach(remoteTrack);
 	}
 
-	async function typing() {
-		const response = await fetch(`/api/channels/${$currentChannel.channel_id}/typing`, {
-			method: 'POST'
-		});
-		await response.json();
+	function stopTyping() {
+		let stopTyping = {
+			event_id: 'STOP_TYPING',
+			data: {
+				user_id: profile.id,
+				channel_id: $currentChannel.channel_id,
+				server_id: server.id
+			}
+		};
+		ws.send(JSON.stringify(stopTyping));
+	}
+
+	function typing(x: string) {
+		if (!x || x === '') {
+			if (ws && ws.readyState === ws.OPEN) {
+				stopTyping();
+			}
+			return;
+		}
+		if (!timer) {
+			let message: WebsocketMessage<typingMessage> = {
+				event_id: 'TYPING',
+				data: {
+					channel_id: $currentChannel.channel_id,
+					user_id: profile.id,
+					server_id: server.id
+				}
+			};
+			ws.send(JSON.stringify(message));
+			timer = setTimeout(() => {
+				timer = undefined;
+			}, 2000);
+		}
 	}
 </script>
 
@@ -241,7 +262,6 @@
 				bind:value={message}
 				type="text"
 				placeholder="Send message"
-				on:change={typing}
 				class="input input-lg rounded-lg focus:outline-none w-full placeholder-base-content text-base"
 			/>
 			<div

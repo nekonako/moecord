@@ -11,7 +11,7 @@ import (
 )
 
 func (h *Handler) ListMessage(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handler.SaveMessage")
+	ctx, span := tracer.Start(r.Context(), "handler.ListMessage")
 	defer tracer.Finish(span)
 
 	channelID := mux.Vars(r)["channel_id"]
@@ -20,7 +20,7 @@ func (h *Handler) ListMessage(w http.ResponseWriter, r *http.Request) {
 	res, err := h.usecase.ListMessage(ctx, userID, channelID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").

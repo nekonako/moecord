@@ -11,13 +11,13 @@ import (
 )
 
 func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handler.CreateServer")
+	ctx, span := tracer.Start(r.Context(), "handler.updateProfile")
 	defer tracer.Finish(span)
 
 	f, _, err := r.FormFile("avatar")
 	if err != nil && err != http.ErrMissingFile {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -31,7 +31,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	id, err := ulid.Parse(r.FormValue("id"))
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -48,7 +48,7 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.usecase.UpdateProfile(ctx, reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").

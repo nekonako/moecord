@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/nekonako/moecord/internal/server/repo"
@@ -13,28 +12,28 @@ import (
 
 func (u *UseCase) InviteServerMember(ctx context.Context, serverID, userID string) error {
 
-	span := tracer.SpanFromContext(ctx, "usecase.ListServer")
+	span := tracer.SpanFromContext(ctx, "usecase.InviteServerMember")
 	defer tracer.Finish(span)
 
 	sid, err := ulid.Parse(serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("invalid user id")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	uid, err := ulid.Parse(userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("invalid user id")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	tx, err := u.infra.Postgres.BeginTxx(ctx, nil)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("invalid user id")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	defer tx.Rollback()
@@ -42,8 +41,8 @@ func (u *UseCase) InviteServerMember(ctx context.Context, serverID, userID strin
 	publicChannel, err := u.repo.GetPublicChannel(ctx, sid)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("invalid user id")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	newMebers := []repo.ChannelMember{}
@@ -56,14 +55,14 @@ func (u *UseCase) InviteServerMember(ctx context.Context, serverID, userID strin
 		})
 	}
 
-	err = u.repo.SaveChannelMember(ctx, tx, newMebers)
+	err = u.repo.CreateChannelMember(ctx, tx, newMebers)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
-	err = u.repo.InviteServerMember(ctx, tx, repo.ServerMember{
+	err = u.repo.CreateServerMember(ctx, tx, repo.ServerMember{
 		ID:        ulid.Make(),
 		ServerID:  sid,
 		UserID:    uid,
@@ -71,14 +70,14 @@ func (u *UseCase) InviteServerMember(ctx context.Context, serverID, userID strin
 	})
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	if err = tx.Commit(); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return err
 	}
 
 	return nil

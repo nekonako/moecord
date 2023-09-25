@@ -34,9 +34,9 @@ type ChannelCategory struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) SaveChannel(ctx context.Context, channel Channel) error {
+func (r *Repository) CreateChannel(ctx context.Context, channel Channel) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveChannel")
+	span := tracer.SpanFromContext(ctx, "repo.CreateChannel")
 	defer tracer.Finish(span)
 
 	query := `
@@ -54,7 +54,7 @@ func (r *Repository) SaveChannel(ctx context.Context, channel Channel) error {
 	_, err := r.postgres.NamedExecContext(ctx, query, channel)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed create channel")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -62,9 +62,9 @@ func (r *Repository) SaveChannel(ctx context.Context, channel Channel) error {
 
 }
 
-func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member []ChannelMember) error {
+func (r *Repository) CreateChannelMember(ctx context.Context, tx *sqlx.Tx, member []ChannelMember) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveChannelMember")
+	span := tracer.SpanFromContext(ctx, "repo.CreateChannelMember")
 	defer tracer.Finish(span)
 
 	query := `
@@ -79,7 +79,7 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 	_, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed create channel member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -109,7 +109,7 @@ func (r *Repository) ListChannel(ctx context.Context, userID, categoryID ulid.UL
 	err := r.postgres.SelectContext(ctx, &result, query, userID, categoryID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed select channel")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 
@@ -117,8 +117,8 @@ func (r *Repository) ListChannel(ctx context.Context, userID, categoryID ulid.UL
 
 }
 
-func (r *Repository) SaveChannelCategory(ctx context.Context, c ChannelCategory) error {
-	span := tracer.SpanFromContext(ctx, "repo.SaveChannelCategory")
+func (r *Repository) CreateChannelCategory(ctx context.Context, c ChannelCategory) error {
+	span := tracer.SpanFromContext(ctx, "repo.CreateChannelCategory")
 	defer tracer.Finish(span)
 
 	query := `
@@ -133,7 +133,7 @@ func (r *Repository) SaveChannelCategory(ctx context.Context, c ChannelCategory)
 	_, err := r.postgres.NamedExecContext(ctx, query, c)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed create channel category")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -158,7 +158,7 @@ func (r *Repository) ListChannelCategory(ctx context.Context, serverID ulid.ULID
 	err := r.postgres.SelectContext(ctx, &result, query, serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed select channel category")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 
@@ -167,7 +167,7 @@ func (r *Repository) ListChannelCategory(ctx context.Context, serverID ulid.ULID
 }
 
 func (r *Repository) GetChannelByID(ctx context.Context, ID ulid.ULID) (Channel, error) {
-	span := tracer.SpanFromContext(ctx, "repo.ListChannelCategory")
+	span := tracer.SpanFromContext(ctx, "repo.GetChannelByID")
 	defer tracer.Finish(span)
 
 	query := `
@@ -183,7 +183,7 @@ func (r *Repository) GetChannelByID(ctx context.Context, ID ulid.ULID) (Channel,
 	err := r.postgres.GetContext(ctx, &result, query, ID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed select channel category")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

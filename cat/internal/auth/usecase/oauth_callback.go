@@ -92,14 +92,14 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		email, err = u.githubTokenExchange(input.AuthorizationCode)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return r, err
 		}
 	case "google":
 		email, err = u.googleTokenExchange(input.AuthorizationCode)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return r, err
 		}
 	case "discord":
@@ -118,7 +118,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 	user, err := u.repo.GetUserByEmail(ctx, email)
 	if err != nil && err != sql.ErrNoRows {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return r, errors.New("failed get user")
 	}
 
@@ -136,7 +136,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 	tx, err := u.infra.Postgres.BeginTxx(ctx, nil)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return r, err
 	}
 
@@ -160,9 +160,9 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
-		if err = u.repo.SaveServer(ctx, tx, server); err != nil {
+		if err = u.repo.CreateServer(ctx, tx, server); err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return r, errors.New("failed create server")
 		}
 		member := repo.ServerMember{
@@ -171,9 +171,9 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 			UserID:    user.ID,
 			CreatedAt: now,
 		}
-		if err = u.repo.SaveServerMember(ctx, tx, member); err != nil {
+		if err = u.repo.CreateServerMember(ctx, tx, member); err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return r, errors.New("failed create server")
 		}
 
@@ -190,7 +190,7 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 		err = u.repo.CreateChannelCategory(ctx, tx, channelCategory)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return r, errors.New("failed create channel category")
 		}
 
@@ -199,14 +199,14 @@ func (u *UseCase) Callback(ctx context.Context, input CallbackRequest) (response
 	err = tx.Commit()
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return r, errors.New("failed commit transaction")
 	}
 
 	accessToken, refreshToken, err := u.generateToken(user.ID, user.Username)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return r, err
 	}
 
@@ -327,7 +327,7 @@ func (u *UseCase) googleTokenExchange(authCode string) (string, error) {
 		return "", ErrFailedTokenExchange
 	}
 
-	ru, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + r.AccessToken)
+	ru, err := http.Get("https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + r.AccessToken)
 	if err != nil {
 		log.Error().Msg(err.Error())
 		return "", ErrFailedGetUserInfo
@@ -338,14 +338,20 @@ func (u *UseCase) googleTokenExchange(authCode string) (string, error) {
 		return "", ErrFailedGetUserInfo
 	}
 
+	fmt.Println(ru.Body)
+
+	x := map[string]any{}
+
 	var user struct {
 		Email string `json:"email"`
 	}
 
-	if err = json.NewDecoder(ru.Body).Decode(&user); err != nil {
+	if err = json.NewDecoder(ru.Body).Decode(&x); err != nil {
 		log.Error().Msg(err.Error())
 		return "", ErrFailedGetUserInfo
 	}
+
+	fmt.Println(x)
 
 	return user.Email, nil
 

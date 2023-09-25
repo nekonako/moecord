@@ -13,8 +13,8 @@ type Server struct {
 	Name string    `db:"name"`
 }
 
-func (r *Repository) GetFistServer(ctx context.Context) (Server, error) {
-	span := tracer.SpanFromContext(ctx, "repo.GetFistServer")
+func (r *Repository) GetFirstServer(ctx context.Context) (Server, error) {
+	span := tracer.SpanFromContext(ctx, "repo.GetFirstServer")
 	defer tracer.Finish(span)
 
 	query := `
@@ -28,7 +28,7 @@ func (r *Repository) GetFistServer(ctx context.Context) (Server, error) {
 	err := r.postgres.GetContext(ctx, &result, query)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed get first server")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

@@ -14,7 +14,7 @@ import (
 
 func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 
-	ctx, span := tracer.Start(r.Context(), "handler.redirect")
+	ctx, span := tracer.Start(r.Context(), "handler.Callback")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.CallbackRequest{}
@@ -33,7 +33,7 @@ func (h *Handler) Callback(w http.ResponseWriter, r *http.Request) {
 	res, err := h.usecase.Callback(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		ive, ve := validation.IsValidationError(err)
 		switch {
 		case ive:

@@ -21,9 +21,9 @@ type Message struct {
 	Avatar    string       `db:"avatar"`
 }
 
-func (r *Repository) SaveMessage(ctx context.Context, message Message) error {
+func (r *Repository) CreateMessage(ctx context.Context, message Message) error {
 
-	ctx, span := tracer.Start(ctx, "repo.SaveMessage")
+	ctx, span := tracer.Start(ctx, "repo.CreateMessage")
 	defer tracer.Finish(span)
 
 	query := `
@@ -41,7 +41,7 @@ func (r *Repository) SaveMessage(ctx context.Context, message Message) error {
 	_, err := r.postgres.NamedExecContext(ctx, query, message)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed save message")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -72,7 +72,7 @@ func (r *Repository) ListMessages(ctx context.Context, channelID ulid.ULID) ([]M
 	err := r.postgres.SelectContext(ctx, &messages, query, channelID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed get messages")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return messages, err
 	}
 

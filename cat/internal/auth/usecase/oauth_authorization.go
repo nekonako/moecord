@@ -31,7 +31,7 @@ func (u *UseCase) Authorization(ctx context.Context, input OauthRequest) (string
 
 	if err := input.validate(); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return "", err
 	}
 

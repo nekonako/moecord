@@ -77,7 +77,6 @@ func (ws *websocket) InitRouter(r *mux.Router) {
 	r.HandleFunc("/v1/room/token", ws.CreeteVoiceRoomToken).Methods(http.MethodGet)
 	r.HandleFunc("/ws", ws.AcceptConnection)
 	go ws.Sub()
-	go ws.SubTyping()
 }
 
 func (w *websocket) GetUserChannel(ctx context.Context, userID ulid.ULID) ([]channel, error) {
@@ -95,7 +94,7 @@ func (w *websocket) GetUserChannel(ctx context.Context, userID ulid.ULID) ([]cha
 	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 
@@ -116,7 +115,7 @@ func (w *websocket) GetUserServer(ctx context.Context, userID ulid.ULID) ([]serv
 	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 
@@ -216,24 +215,6 @@ func (w *websocket) Sub() {
 	})
 }
 
-func (w *websocket) SubTyping() {
-	w.infra.Nats.Subscribe("TYPING", func(m *nats.Msg) {
-		message := api.WebSockerMessage[TypingMessage]{}
-		err := json.Unmarshal(m.Data, &message)
-		if err != nil {
-			log.Error().Msg(err.Error())
-		}
-		if c, ok := connMap.channels[message.Data.ChannelID.String()]; ok {
-			go func(m any, mb []byte, conn map[string]*myConn) {
-				for _, v := range conn {
-					wsutil.WriteServerMessage(v.Conn, 0x1, mb)
-				}
-			}(message, m.Data, c)
-			m.AckSync()
-		}
-	})
-}
-
 func (w *websocket) broadcastChannel(m usecase.SaveMessageResponse, mb []byte, conn map[string]*myConn) {
 	for _, c := range conn {
 		if c.userid == m.SenderID {
@@ -299,14 +280,32 @@ func (w *websocket) ListenConnection(serverID, channelID []string, userID string
 			connMap.Unlock()
 			return
 		}
-		mm := api.WebSockerMessage[TypingMessage]{}
-		err = json.Unmarshal(m, &mm)
+		wm := api.WebSocketMessage[any]{}
+		err = json.Unmarshal(m, &wm)
 		if err != nil {
 			log.Error().Msg(err.Error())
 			continue
 		}
-		if mm.EventID == "STOP_TYPING" {
-			for _, v := range connMap.servers[mm.Data.ServerID.String()] {
+		if wm.EventID == "STOP_TYPING" {
+			message := api.WebSocketMessage[TypingMessage]{}
+			err = json.Unmarshal(m, &message)
+			if err != nil {
+				log.Error().Msg(err.Error())
+				continue
+			}
+			for _, v := range connMap.servers[message.Data.ServerID.String()] {
+				wsutil.WriteServerMessage(v.Conn, 0x1, m)
+			}
+		}
+
+		if wm.EventID == "TYPING" {
+			message := api.WebSocketMessage[TypingMessage]{}
+			err = json.Unmarshal(m, &message)
+			if err != nil {
+				log.Error().Msg(err.Error())
+				continue
+			}
+			for _, v := range connMap.servers[message.Data.ServerID.String()] {
 				wsutil.WriteServerMessage(v.Conn, 0x1, m)
 			}
 		}

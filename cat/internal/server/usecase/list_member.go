@@ -21,20 +21,20 @@ type ListServerMemberResponse struct {
 
 func (u *UseCase) ListServerMember(ctx context.Context, serverID string) ([]ListServerMemberResponse, error) {
 
-	span := tracer.SpanFromContext(ctx, "usecase.ListServer")
+	span := tracer.SpanFromContext(ctx, "usecase.ListServerMember")
 	defer tracer.Finish(span)
 
 	id, err := ulid.Parse(serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return nil, errors.New("invalid user id")
 	}
 
 	server, err := u.repo.ListServerMember(ctx, id)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return nil, errors.New("failed get list server")
 	}
 

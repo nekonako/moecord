@@ -20,14 +20,14 @@ type UpdateProfileRequest struct {
 }
 
 func (u *UseCase) UpdateProfile(ctx context.Context, p UpdateProfileRequest) error {
-	span := tracer.SpanFromContext(ctx, "usecase.ListMessage")
+	span := tracer.SpanFromContext(ctx, "usecase.UpdateProfile")
 	defer tracer.Finish(span)
 
 	user, err := u.repo.GetUserByID(ctx, p.ID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
-		return errors.New("failed update server")
+		return errors.New("failed get profile")
 	}
 
 	if p.Avatar != nil {
@@ -38,7 +38,7 @@ func (u *UseCase) UpdateProfile(ctx context.Context, p UpdateProfileRequest) err
 		if err != nil {
 			tracer.SpanError(span, err)
 			log.Error().Msg(err.Error())
-			return errors.New("failed update server")
+			return errors.New("failed update profile")
 		}
 		user.Avatar = res.URL
 	}
@@ -51,8 +51,8 @@ func (u *UseCase) UpdateProfile(ctx context.Context, p UpdateProfileRequest) err
 	})
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Ctx(ctx).Msg(err.Error())
-		return errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return errors.New("failed update profile")
 	}
 
 	return nil

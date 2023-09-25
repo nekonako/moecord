@@ -34,10 +34,10 @@ func (u *UseCase) ListChannel(ctx context.Context, userID ulid.ULID, serverId st
 	res := make([]ChannelCategory, 0)
 	channelCategory := []repo.ChannelCategory{}
 	if serverId == "@me" {
-		server, err := u.repo.GetFistServer(ctx)
+		server, err := u.repo.GetFirstServer(ctx)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return nil, err
 		}
 		cc, err := u.repo.ListChannelCategory(ctx, server.ID)
@@ -52,7 +52,7 @@ func (u *UseCase) ListChannel(ctx context.Context, userID ulid.ULID, serverId st
 		cc, err := u.repo.ListChannelCategory(ctx, sID)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return nil, err
 		}
 		channelCategory = cc
@@ -62,7 +62,7 @@ func (u *UseCase) ListChannel(ctx context.Context, userID ulid.ULID, serverId st
 		channels, err := u.repo.ListChannel(ctx, userID, v.ID)
 		if err != nil {
 			tracer.SpanError(span, err)
-			log.Error().Msg(err.Error())
+			log.Error().Ctx(ctx).Msg(err.Error())
 			return nil, err
 		}
 

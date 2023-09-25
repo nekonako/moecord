@@ -29,9 +29,9 @@ type ServerMember struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server) error {
+func (r *Repository) CreateServer(ctx context.Context, tx *sqlx.Tx, server Server) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.CreateServer")
 	defer tracer.Finish(span)
 
 	query := `
@@ -49,7 +49,7 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 	_, err := tx.NamedExecContext(ctx, query, server)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert user")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -57,9 +57,9 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 
 }
 
-func (r *Repository) SaveServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
+func (r *Repository) CreateServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.CreateServerMember")
 	defer tracer.Finish(span)
 
 	query := `
@@ -74,31 +74,7 @@ func (r *Repository) SaveServerMember(ctx context.Context, tx *sqlx.Tx, member S
 	_, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert server member")
-		return err
-	}
-
-	return nil
-}
-
-func (r *Repository) InviteServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
-
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
-	defer tracer.Finish(span)
-
-	query := `
-		INSERT INTO server_member (
-			id,
-			server_id,
-			user_id,
-			created_at
-		) VALUES (:id, :server_id, :user_id, :created_at)
-	`
-
-	_, err := tx.NamedExecContext(ctx, query, member)
-	if err != nil {
-		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert server member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -107,7 +83,7 @@ func (r *Repository) InviteServerMember(ctx context.Context, tx *sqlx.Tx, member
 
 func (r *Repository) ListServerUser(ctx context.Context, userID ulid.ULID) ([]Server, error) {
 
-	span := tracer.SpanFromContext(ctx, "repo.ListServer")
+	span := tracer.SpanFromContext(ctx, "repo.ListServerUser")
 	defer tracer.Finish(span)
 
 	query := `
@@ -128,7 +104,7 @@ func (r *Repository) ListServerUser(ctx context.Context, userID ulid.ULID) ([]Se
 	err := r.postgres.SelectContext(ctx, &result, query, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed get server")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 
@@ -137,7 +113,7 @@ func (r *Repository) ListServerUser(ctx context.Context, userID ulid.ULID) ([]Se
 }
 
 func (r *Repository) ListServerMember(ctx context.Context, serverID ulid.ULID) ([]ServerMember, error) {
-	span := tracer.SpanFromContext(ctx, "repo.ListServer")
+	span := tracer.SpanFromContext(ctx, "repo.ListServerMember")
 	defer tracer.Finish(span)
 
 	query := `
@@ -167,14 +143,14 @@ func (r *Repository) ListServerMember(ctx context.Context, serverID ulid.ULID) (
 
 func (r *Repository) UpdateServer(ctx context.Context, s Server) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.UpdateServer")
 	defer tracer.Finish(span)
 
 	query := `UPDATE servers SET name=:name, avatar=:avatar WHERE id = :id`
 	_, err := r.postgres.NamedExecContext(ctx, query, s)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert server member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -183,7 +159,7 @@ func (r *Repository) UpdateServer(ctx context.Context, s Server) error {
 
 func (r *Repository) GetServerByID(ctx context.Context, serverID ulid.ULID) (Server, error) {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.GetServerByID")
 	defer tracer.Finish(span)
 
 	result := Server{}
@@ -191,7 +167,7 @@ func (r *Repository) GetServerByID(ctx context.Context, serverID ulid.ULID) (Ser
 	err := r.postgres.GetContext(ctx, &result, query, serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert server member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

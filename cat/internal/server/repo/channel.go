@@ -27,9 +27,9 @@ type ChannelMember struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) SaveChannel(ctx context.Context, tx *sqlx.Tx, channel []Channel) error {
+func (r *Repository) CreateChannel(ctx context.Context, tx *sqlx.Tx, channel []Channel) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveChannel")
+	span := tracer.SpanFromContext(ctx, "repo.CreateChannel")
 	defer tracer.Finish(span)
 
 	query := `
@@ -47,7 +47,7 @@ func (r *Repository) SaveChannel(ctx context.Context, tx *sqlx.Tx, channel []Cha
 	_, err := tx.NamedExecContext(ctx, query, channel)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed create channel")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -55,9 +55,9 @@ func (r *Repository) SaveChannel(ctx context.Context, tx *sqlx.Tx, channel []Cha
 
 }
 
-func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member []ChannelMember) error {
+func (r *Repository) CreateChannelMember(ctx context.Context, tx *sqlx.Tx, member []ChannelMember) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveChannelMember")
+	span := tracer.SpanFromContext(ctx, "repo.CreateChannelMember")
 	defer tracer.Finish(span)
 
 	query := `
@@ -72,7 +72,7 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 	_, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed create channel member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -82,7 +82,7 @@ func (r *Repository) SaveChannelMember(ctx context.Context, tx *sqlx.Tx, member 
 
 func (r *Repository) GetPublicChannel(ctx context.Context, serverID ulid.ULID) ([]Channel, error) {
 
-	span := tracer.SpanFromContext(ctx, "repo.ListServer")
+	span := tracer.SpanFromContext(ctx, "repo.GetPublicChannel")
 	defer tracer.Finish(span)
 
 	query := `
@@ -101,7 +101,7 @@ func (r *Repository) GetPublicChannel(ctx context.Context, serverID ulid.ULID) (
 	err := r.postgres.SelectContext(ctx, &result, query, serverID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed get server")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

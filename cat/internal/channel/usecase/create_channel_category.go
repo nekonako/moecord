@@ -26,10 +26,10 @@ func (u *UseCase) CreateChannelCategory(ctx context.Context, p CreateChannelCate
 		CreatedAt: time.Now().UTC(),
 	}
 
-	err := u.repo.SaveChannelCategory(ctx, e)
+	err := u.repo.CreateChannelCategory(ctx, e)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 

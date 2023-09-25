@@ -22,17 +22,17 @@ type TypingMessage struct {
 }
 
 func (u *UseCase) Typing(ctx context.Context, p TypingRequest) error {
-	span := tracer.SpanFromContext(ctx, "usecase.CreateChannelCategory")
+	span := tracer.SpanFromContext(ctx, "usecase.Typing")
 	defer tracer.Finish(span)
 
 	channel, err := u.repo.GetChannelByID(ctx, p.ChannelID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
-	m := api.WebSockerMessage[TypingMessage]{
+	m := api.WebSocketMessage[TypingMessage]{
 		EventID: "TYPING",
 		Data: TypingMessage{
 			ChannelID: channel.ID,

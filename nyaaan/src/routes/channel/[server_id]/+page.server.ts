@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import type { ApiResponse, Channel, Message, Server, Servermember } from './type';
+import type { ApiResponse, Channel, Message, Server, ServerMember } from './type';
 
 export async function load({ fetch, setHeaders, cookies, params }) {
   const responseServer = await fetch('/api/servers');
@@ -30,7 +30,7 @@ export async function load({ fetch, setHeaders, cookies, params }) {
   })
 
   const serverMember = await fetch('/api/servers/' + selected_server!.id + '/member')
-  const servermemberResult: ApiResponse<Servermember> = await serverMember.json()
+  const servermemberResult: ApiResponse<Array<ServerMember>> = await serverMember.json()
 
   return {
     servers: servers.data,

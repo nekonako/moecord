@@ -30,7 +30,7 @@ export type Message = {
   created_at: string
 };
 
-export type Servermember = {
+export type ServerMember = {
   id: string;
   user_id: string;
   server_id: string;

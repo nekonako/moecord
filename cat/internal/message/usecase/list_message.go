@@ -31,8 +31,8 @@ func (u *UseCase) ListMessage(ctx context.Context, uID, cID string) ([]ListMessa
 	messages, err := u.repo.ListMessages(ctx, channelID)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Ctx(ctx).Msg(err.Error())
-		return nil, errors.New("failed get list server")
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return nil, errors.New("failed get message")
 	}
 
 	res := make([]ListMessages, len(messages))

@@ -37,7 +37,7 @@ func (r *Repository) SaveOrUpdateUser(ctx context.Context, tx *sqlx.Tx, user Use
 	_, err := tx.NamedExecContext(ctx, query, user)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert user")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -55,7 +55,7 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (User, er
 	err := r.postgres.GetContext(ctx, &result, query, email)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed get user")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return result, err
 	}
 

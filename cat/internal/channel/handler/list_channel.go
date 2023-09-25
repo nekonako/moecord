@@ -45,7 +45,7 @@ func (h *Handler) CreateChannelCategory(w http.ResponseWriter, r *http.Request) 
 	reqBody := usecase.CreateChannelCategoryRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -56,7 +56,7 @@ func (h *Handler) CreateChannelCategory(w http.ResponseWriter, r *http.Request) 
 	err := h.usecase.CreateChannelCategory(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").
@@ -71,13 +71,13 @@ func (h *Handler) CreateChannelCategory(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) CreateChannel(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handler.CreateChannelCategory")
+	ctx, span := tracer.Start(r.Context(), "handler.CreateChannel")
 	defer tracer.Finish(span)
 
 	reqBody := usecase.CreateChannelRequest{}
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusBadRequest).
 			WitMessage("invalid request").
@@ -88,7 +88,7 @@ func (h *Handler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 	err := h.usecase.CreateChannel(ctx, reqBody)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").
@@ -103,7 +103,7 @@ func (h *Handler) CreateChannel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Typing(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "handler.CreateChannelCategory")
+	ctx, span := tracer.Start(r.Context(), "handler.Typing")
 	defer tracer.Finish(span)
 
 	chanStr := mux.Vars(r)["channel_id"]

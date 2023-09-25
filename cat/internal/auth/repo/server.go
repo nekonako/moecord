@@ -27,9 +27,9 @@ type ServerMember struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server) error {
+func (r *Repository) CreateServer(ctx context.Context, tx *sqlx.Tx, server Server) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.CreateServer")
 	defer tracer.Finish(span)
 
 	query := `
@@ -47,7 +47,7 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 	_, err := tx.NamedExecContext(ctx, query, server)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert user")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
@@ -55,9 +55,9 @@ func (r *Repository) SaveServer(ctx context.Context, tx *sqlx.Tx, server Server)
 
 }
 
-func (r *Repository) SaveServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
+func (r *Repository) CreateServerMember(ctx context.Context, tx *sqlx.Tx, member ServerMember) error {
 
-	span := tracer.SpanFromContext(ctx, "repo.SaveServer")
+	span := tracer.SpanFromContext(ctx, "repo.CreateServer")
 	defer tracer.Finish(span)
 
 	query := `
@@ -72,7 +72,7 @@ func (r *Repository) SaveServerMember(ctx context.Context, tx *sqlx.Tx, member S
 	_, err := tx.NamedExecContext(ctx, query, member)
 	if err != nil {
 		tracer.SpanError(span, err)
-		log.Error().Err(err).Msg("failed insert server member")
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return err
 	}
 
