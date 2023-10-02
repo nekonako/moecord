@@ -7,8 +7,9 @@
 		RiSettings4Line,
 		RiCloseLine
 	} from 'svelte-remixicon';
-	import type { Channel, Profile, Server } from './type';
+	import type { Channel, CreateChannelRequest, Profile, Server } from '$lib/service/type';
 	import { ShowServerSettingModal, ShowUserSettingModal, currentChannel } from './store';
+	import { createChannel, getListChannel } from '$lib/service/channel';
 
 	export let selectedServer: Server;
 	export let channels: Array<Channel>;
@@ -18,7 +19,6 @@
 	let inviteModal = false;
 	let categoryModal = false;
 	let createChannelModal = false;
-	let showProfileModal = false;
 
 	let category = {
 		name: '',
@@ -26,7 +26,7 @@
 		server_id: selectedServer.id
 	};
 
-	let channel = {
+	let channel: CreateChannelRequest = {
 		name: '',
 		server_id: selectedServer.id,
 		category_id: '',
@@ -56,17 +56,17 @@
 		const result = await response.json();
 		if (result.code == 200) {
 			categoryModal = false;
+			const response = await getListChannel(fetch, selectedServer.id);
+			channels = response.data;
 		}
 	}
 
-	async function createChannel() {
-		const response = await fetch('/api/channels', {
-			body: JSON.stringify(channel),
-			method: 'POST'
-		});
-		const result = await response.json();
-		if (result.code == 200) {
+	async function handleCreateChannel() {
+		const response = await createChannel(fetch, channel);
+		if (response.code == 200) {
 			createChannelModal = false;
+			const response = await getListChannel(fetch, selectedServer.id);
+			channels = response.data;
 		}
 	}
 </script>
@@ -213,7 +213,7 @@
 				</span>
 				<div class="flex flex-row justify-between mt-8">
 					<div />
-					<button class="bg-success text-base-100 px-3 py-2 rounded" on:click={createChannel}
+					<button class="bg-success text-base-100 px-3 py-2 rounded" on:click={handleCreateChannel}
 						>Save</button
 					>
 				</div>

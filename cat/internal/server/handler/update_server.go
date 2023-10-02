@@ -45,7 +45,8 @@ func (h *Handler) UpdateServer(w http.ResponseWriter, r *http.Request) {
 		Avatar: f,
 	}
 
-	if err := h.usecase.UpdateServer(ctx, reqBody); err != nil {
+	res, err := h.usecase.UpdateServer(ctx, reqBody)
+	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Msg(err.Error())
 		api.NewHttpResponse().
@@ -58,6 +59,7 @@ func (h *Handler) UpdateServer(w http.ResponseWriter, r *http.Request) {
 	api.NewHttpResponse().
 		WithCode(http.StatusOK).
 		WitMessage("Success").
+		WithData(res).
 		SendJSON(w)
 
 }

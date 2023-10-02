@@ -1,5 +1,7 @@
 <script lang="ts">
-	import type { Server } from './type';
+	import { updateServer } from '$lib/service/server';
+	import type { Server } from '$lib/service/type';
+	import { createEventDispatcher } from 'svelte';
 	import { ShowServerSettingModal } from './store';
 	import { RiCloseLine } from 'svelte-remixicon';
 
@@ -7,20 +9,18 @@
 	let file: File;
 	let updateServerName = selectedServer.name;
 	let serverImg: HTMLElement;
+	const dispatch = createEventDispatcher();
 
-	async function updateServer() {
+	async function handleUpdateServer() {
 		const rBody = new FormData();
 		rBody.append('id', selectedServer.id);
-		rBody.append('name', selectedServer.name);
+		rBody.append('name', updateServerName);
 		rBody.append('avatar', file);
 
-		const response = await fetch(`/api/servers`, {
-			method: 'PUT',
-			body: rBody
-		});
-		const result = await response.json();
-		if (result.code == 200) {
+		const response = await updateServer(fetch, rBody);
+		if (response.code == 200) {
 			ShowServerSettingModal.set(false);
+			dispatch('updateServer', response.data);
 		}
 	}
 
@@ -88,7 +88,9 @@
 			</div>
 		</div>
 		<div class="inline-block text-center">
-			<button on:click={() => updateServer()} class="bg-success text-base-100 px-4">Save</button>
+			<button on:click={() => handleUpdateServer()} class="bg-success text-base-100 px-4"
+				>Save</button
+			>
 		</div>
 		<div />
 	</div>

@@ -3,10 +3,10 @@ package usecase
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/nekonako/moecord/internal/message/repo"
+	"github.com/nekonako/moecord/internal/websocket"
 	"github.com/nekonako/moecord/pkg/api"
 	"github.com/nekonako/moecord/pkg/middleware"
 	"github.com/nekonako/moecord/pkg/tracer"
@@ -40,8 +40,8 @@ func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) (SaveMes
 	now := time.Now().UTC()
 	response := SaveMessageResponse{}
 
-	usedStr := ctx.Value(middleware.Claim("user_id")).(string)
-	userID, _ := ulid.Parse(usedStr)
+	userIDstr := ctx.Value(middleware.Claim("user_id")).(string)
+	userID, _ := ulid.Parse(userIDstr)
 
 	user, err := u.repo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -82,34 +82,7 @@ func (u *UseCase) SaveMessage(ctx context.Context, m SaveMessagRequest) (SaveMes
 		Data:    response,
 	}
 
-	go u.publishMessage("NEW_CHANNEL_MESSAGE", wm)
-
+	go websocket.SendMessage[SaveMessageResponse](ctx, u.ws, wm, m.ChannelID.String(), userIDstr)
 	return response, nil
 
-}
-
-func (u *UseCase) publishMessage(topic string, m any) {
-
-	ctx, span := tracer.Start(context.Background(), "usecase.SaveMessage")
-	defer tracer.Finish(span)
-	tick := time.NewTicker(1)
-	maxRetry := 3
-	b, err := json.Marshal(m)
-	if err != nil {
-		tracer.SpanError(span, err)
-		log.Error().Msg(err.Error())
-		return
-	}
-
-	retry := 0
-	for retry < maxRetry {
-		<-tick.C
-		err := u.infra.Nats.Publish(topic, b)
-		if err == nil {
-			log.Info().Ctx(ctx).Msg("success publish message with topic : " + topic)
-			return
-		}
-		retry++
-		tick = time.NewTicker(time.Duration(retry) * time.Second)
-	}
 }

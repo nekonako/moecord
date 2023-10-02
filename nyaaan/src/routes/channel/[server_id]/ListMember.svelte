@@ -1,21 +1,38 @@
 <script lang="ts">
 	import { MapServerMember } from './store';
-	import { getColor, type Servermember, type WebsocketMessage } from './type';
+	import type { ServerMember, UserConnectionState, WebsocketMessage } from '$lib/service/type';
+	import { getColor } from '$lib/util';
 
-	export let members: Array<Servermember>;
-
+	export let members: Array<ServerMember>;
+	export let wsMessageHandler: Set<(e: MessageEvent) => void> = new Set();
 	let filteredMembers = [...members];
 	let keyword = '';
 
 	function search() {
 		if (keyword != '') {
-			members = filteredMembers.filter((value) => value.username.startsWith(keyword));
+			const result = filteredMembers.filter((value) => value.username.includes(keyword));
+			members = [...result];
 			return;
 		}
-		if (keyword == '') {
+		if (!keyword) {
 			members = filteredMembers;
 		}
 	}
+
+	wsMessageHandler.add((e) => {
+		let message: WebsocketMessage<any> = JSON.parse(e.data);
+		if (message.event_id == 'USER_DISCONNECTED' || message.event_id == 'NEW_CONNECTION') {
+			console.log('connection state changes');
+			let data = message.data as UserConnectionState;
+			members.forEach((value) => {
+				if (value.user_id == data.user_id) {
+					console.log(value.user_id, data.user_id, value);
+					value.online = data.status == 'online';
+				}
+			});
+			members = members;
+		}
+	});
 </script>
 
 <input
@@ -27,11 +44,20 @@
 />
 {#each members as member}
 	<div class="flex flex-row items-center mb-4">
-		<div class="avatar online mr-4">
-			<div class="w-8 ring ring-success rounded-full">
-				<img src={member.avatar} alt="profile" />
+		{#if member.online}
+			<div class="avatar online mr-4">
+				<div class="w-8 rounded-full">
+					<img src={member.avatar} alt="profile" />
+				</div>
 			</div>
-		</div>
+		{:else}
+			<div class="avatar mr-4">
+				<div class="w-8 rounded-full">
+					<img src={member.avatar} alt="profile" />
+				</div>
+			</div>
+		{/if}
+
 		<div class="fle flex-col">
 			<span class={getColor(member.username.toUpperCase().charCodeAt(0))}>{member.username}</span>
 			{#if $MapServerMember[member.user_id]}

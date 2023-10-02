@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Server } from './type';
+	import type { Server } from '$lib/service/type';
 	import { showCreateServerModal } from './store';
 	import { RiAddLine } from 'svelte-remixicon';
 	import { goto } from '$app/navigation';

@@ -121,13 +121,13 @@ func (r *Repository) ListServerMember(ctx context.Context, serverID ulid.ULID) (
 		sm.id,
 		sm.user_id,
 		sm.server_id,
-        u.username,
-        u.avatar,
+		u.username,
+		u.avatar,
 		sm.created_at
 	FROM server_member AS sm
-    INNER JOIN users As u ON u.id = sm.user_id
-    WHERE sm.server_id = $1
-    `
+	INNER JOIN users As u ON u.id = sm.user_id
+	WHERE sm.server_id = $1
+	`
 
 	result := []ServerMember{}
 	err := r.postgres.SelectContext(ctx, &result, query, serverID)

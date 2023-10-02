@@ -1,12 +1,6 @@
 <script lang="ts">
-	import {
-		getColor,
-		type ApiResponse,
-		type Message,
-		type Profile,
-		type Server,
-		type WebsocketMessage
-	} from './type';
+	import type { ApiResponse, Message, Profile, Server, WebsocketMessage } from '$lib/service/type';
+	import { getColor } from '$lib/util';
 	import { MapServerMember, currentChannel } from './store';
 	import { RiSendPlane2Line } from 'svelte-remixicon';
 	import { afterUpdate, onMount } from 'svelte';
@@ -17,13 +11,14 @@
 		RemoteTrack,
 		RemoteParticipant
 	} from 'livekit-client';
-	import { browser } from '$app/environment';
 
 	let localTrack: HTMLMediaElement;
 	let remoteTrack: HTMLMediaElement;
 
 	export let messages: Array<Message> = [];
 	export let ws: WebSocket;
+	export let wsMessageHandler: Set<(e: MessageEvent) => void> = new Set();
+
 	export let profile: Profile;
 	export let server: Server;
 	let newMessage = Array<Message>();
@@ -33,9 +28,9 @@
 
 	$: typing(message);
 
-	function handleMessage(ws: WebSocket) {
-		ws.onmessage = (m) => {
-			let message: WebsocketMessage<any> = JSON.parse(m.data);
+	function handleMessage() {
+		wsMessageHandler.add((e) => {
+			let message: WebsocketMessage<any> = JSON.parse(e.data);
 			if (message.event_id == 'NEW_CHANNEL_MESSAGE') {
 				let data = message.data as SaveMessageResponse;
 				if ($currentChannel.channel_id === data.channel_id) {
@@ -55,7 +50,7 @@
 				o[data.user_id] = false;
 				MapServerMember.set({ ...$MapServerMember, ...o });
 			}
-		};
+		});
 	}
 
 	type typingMessage = {
@@ -128,7 +123,7 @@
 
 	onMount(() => {
 		scrollBottom(messageEl);
-		handleMessage(ws);
+		handleMessage();
 	});
 
 	afterUpdate(() => {

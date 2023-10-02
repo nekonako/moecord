@@ -9,21 +9,25 @@ import (
 	"github.com/nekonako/moecord/internal/server/handler"
 	"github.com/nekonako/moecord/internal/server/repo"
 	"github.com/nekonako/moecord/internal/server/usecase"
+	"github.com/nekonako/moecord/internal/websocket"
 	"github.com/nekonako/moecord/pkg/middleware"
 )
 
 type Server struct {
 	Config *config.Config
 	Infra  *infra.Infra
+	ws     *websocket.Websocket
 }
 
 func New(
 	c *config.Config,
 	infra *infra.Infra,
+	ws *websocket.Websocket,
 ) *Server {
 	return &Server{
 		Config: c,
 		Infra:  infra,
+		ws:     ws,
 	}
 }
 
@@ -33,7 +37,7 @@ func (o *Server) InitRouter(r *mux.Router) {
 	v1.Use(middleware.Authentication(o.Config))
 
 	repo := repo.New(o.Infra.Postgres)
-	u := usecase.New(o.Config, o.Infra, repo)
+	u := usecase.New(o.Config, o.Infra, repo, o.ws)
 	h := handler.New(o.Config, u)
 
 	v1.HandleFunc("/servers", h.ListServer).Methods(http.MethodGet)

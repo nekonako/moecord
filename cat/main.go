@@ -66,23 +66,23 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	r.Use(otelMiddleware.Middleware(c.Apm.ServiceName))
 
+	ws := websocket.New(c, infra)
+	ws.InitRouter(r)
+
 	oauth := auth.New(c, infra)
 	oauth.InitRouter(r)
 
-	server := server.New(c, infra)
+	server := server.New(c, infra, ws)
 	server.InitRouter(r)
 
 	channel := channel.New(c, infra)
 	channel.InitRouter(r)
 
-	message := message.New(c, infra)
+	message := message.New(c, infra, ws)
 	message.InitRouter(r)
 
 	profile := profile.New(c, infra)
 	profile.InitRouter(r)
-
-	ws := websocket.New(c, infra)
-	ws.InitRouter(r)
 
 	origins := handlers.AllowedOrigins([]string{"*"})
 	headers := handlers.AllowedHeaders([]string{"Access-Control-Allow-Origin", "Content-Type"})

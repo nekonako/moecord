@@ -3,43 +3,56 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"net"
+	"net/http"
+	"sync"
+	"time"
+
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/gorilla/mux"
 	"github.com/livekit/protocol/auth"
-	"github.com/nats-io/nats.go"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
-	"github.com/nekonako/moecord/internal/message/usecase"
 	"github.com/nekonako/moecord/pkg/api"
 	"github.com/nekonako/moecord/pkg/middleware"
 	"github.com/nekonako/moecord/pkg/tracer"
 	"github.com/oklog/ulid/v2"
 	"github.com/rs/zerolog/log"
-	"net"
-	"net/http"
-	"sync"
-	"time"
 )
 
-type conn struct {
-	*sync.RWMutex
-	channels map[string]map[string]*myConn
-	users    map[string]bool
-	servers  map[string]map[string]*myConn
+type wsConn struct {
+	net.Conn
+	// websocket connection hold user_id to identify connection
+	UserID ulid.ULID `json:"user_id"`
 }
 
-type myConn struct {
-	net.Conn
-	userid ulid.ULID
+type ConnMap struct {
+	*sync.RWMutex
+
+	// first key : channel_id
+	// second key : user_id
+	// hold user that associate to channel
+	// this is used to broadcast message to all user that associate to specific channel
+	channels map[string]map[string]*wsConn
+
+	// this is map to detect list of online users that connected to websocket
+	// key : user_id
+	users map[string]bool
+
+	// first key : server_id
+	// second key : user_id
+	// hold user that associate to server
+	// this is used to broadcast message to all user that associate to spesific server
+	servers map[string]map[string]*wsConn
 }
 
 var (
 	connOnce sync.Once
-	connMap  *conn
+	connMap  *ConnMap
 )
 
-type websocket struct {
+type Websocket struct {
 	config *config.Config
 	infra  *infra.Infra
 }
@@ -52,128 +65,83 @@ type server struct {
 	ID ulid.ULID `db:"id"`
 }
 
-type TypingMessage struct {
+type typingMessage struct {
 	ChannelID ulid.ULID `json:"channel_id"`
 	UserID    ulid.ULID `json:"user_id"`
 	ServerID  ulid.ULID `json:"server_id"`
 }
 
-func New(c *config.Config, infra *infra.Infra) *websocket {
+type userConnectionState struct {
+	UserID string `json:"user_id"`
+	Status string `json:"status"`
+}
+
+func New(c *config.Config, infra *infra.Infra) *Websocket {
 	connOnce.Do(func() {
-		connMap = &conn{
+		connMap = &ConnMap{
 			RWMutex:  &sync.RWMutex{},
-			channels: make(map[string]map[string]*myConn),
+			channels: make(map[string]map[string]*wsConn),
 			users:    make(map[string]bool),
-			servers:  make(map[string]map[string]*myConn),
+			servers:  make(map[string]map[string]*wsConn),
 		}
 	})
-	return &websocket{
+	return &Websocket{
 		infra:  infra,
 		config: c,
 	}
 }
 
-func (ws *websocket) InitRouter(r *mux.Router) {
-	r.HandleFunc("/v1/room/token", ws.CreeteVoiceRoomToken).Methods(http.MethodGet)
-	r.HandleFunc("/ws", ws.AcceptConnection)
-	go ws.Sub()
+func (ws *Websocket) InitRouter(r *mux.Router) {
+	r.HandleFunc("/v1/room/token", ws.creeteVoiceRoomToken).Methods(http.MethodGet)
+	r.HandleFunc("/ws", ws.acceptConnection)
 }
 
-func (w *websocket) GetUserChannel(ctx context.Context, userID ulid.ULID) ([]channel, error) {
-	ctx, span := tracer.Start(ctx, "websocket.GetUserChannel")
-	defer tracer.Finish(span)
-
-	result := []channel{}
-	query := `
-       SELECT
-         distinct(c.id)
-       FROM channel AS c
-       LEFT JOIN channel_member AS cm ON cm.channel_id = c.id
-       WHERE (c.is_private = false OR cm.user_id = $1)
-    `
-	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
-	if err != nil {
-		tracer.SpanError(span, err)
-		log.Error().Ctx(ctx).Msg(err.Error())
-		return result, err
-	}
-
-	return result, nil
-
-}
-
-func (w *websocket) GetUserServer(ctx context.Context, userID ulid.ULID) ([]server, error) {
-	ctx, span := tracer.Start(ctx, "websocket.GetUserChannel")
-	defer tracer.Finish(span)
-
-	result := []server{}
-	query := `
-       SELECT
-        server_id as id
-       FROM server_member WHERE user_id = $1
-       `
-	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
-	if err != nil {
-		tracer.SpanError(span, err)
-		log.Error().Ctx(ctx).Msg(err.Error())
-		return result, err
-	}
-
-	return result, nil
-
-}
-
-func (cat *websocket) AcceptConnection(w http.ResponseWriter, r *http.Request) {
+func (cat *Websocket) acceptConnection(w http.ResponseWriter, r *http.Request) {
 
 	ctx, span := tracer.Start(r.Context(), "websocket.AcceptConnection")
 	defer tracer.Finish(span)
 
 	c, err := r.Cookie("access_token")
 	if err != nil {
-		api.NewHttpResponse().
-			WithCode(http.StatusBadGateway).
-			WithError(err)
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return
 	}
 
 	accessToken := c.Value
 	claim, err := middleware.ValidateToken(accessToken, cat.config.JWT.PrivateKey)
 	if err != nil {
-		api.NewHttpResponse().
-			WithCode(http.StatusBadGateway).
-			WithError(err)
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return
 	}
 
 	conn, _, _, err := ws.UpgradeHTTP(r, w)
 	if err != nil {
-		api.NewHttpResponse().
-			WithCode(http.StatusBadGateway).
-			WithError(err)
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return
 	}
 
 	userIDStr := claim["sub"].(string)
 	userID, _ := ulid.Parse(userIDStr)
-	channels, err := cat.GetUserChannel(ctx, userID)
+	channels, err := cat.getUserChannel(ctx, userID)
 	if err != nil {
-		api.NewHttpResponse().
-			WithCode(http.StatusBadGateway).
-			WithError(err)
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return
 	}
 
-	servers, err := cat.GetUserServer(ctx, userID)
+	servers, err := cat.getUserServer(ctx, userID)
 	if err != nil {
-		api.NewHttpResponse().
-			WithCode(http.StatusBadGateway).
-			WithError(err)
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		return
 	}
 
 	connMap.Lock()
-	con := &myConn{
-		userid: userID,
+	con := &wsConn{
+		UserID: userID,
 		Conn:   conn,
 	}
 	chanArr := []string{}
@@ -181,7 +149,7 @@ func (cat *websocket) AcceptConnection(w http.ResponseWriter, r *http.Request) {
 	for _, v := range channels {
 		_, connChanExists := connMap.channels[v.ID.String()]
 		if !connChanExists {
-			connMap.channels[v.ID.String()] = make(map[string]*myConn)
+			connMap.channels[v.ID.String()] = make(map[string]*wsConn)
 		}
 		connMap.channels[v.ID.String()][userID.String()] = con
 		chanArr = append(chanArr, v.ID.String())
@@ -190,41 +158,32 @@ func (cat *websocket) AcceptConnection(w http.ResponseWriter, r *http.Request) {
 	for _, v := range servers {
 		_, connServerExists := connMap.servers[v.ID.String()]
 		if !connServerExists {
-			connMap.servers[v.ID.String()] = make(map[string]*myConn)
+			connMap.servers[v.ID.String()] = make(map[string]*wsConn)
 		}
 		connMap.servers[v.ID.String()][userIDStr] = con
+		newCOnnection := api.WebSocketMessage[any]{
+			EventID: "NEW_CONNECTION",
+			Data: userConnectionState{
+				UserID: userIDStr,
+				Status: "online",
+			},
+		}
+		bm, _ := json.Marshal(newCOnnection)
+		for _, userConn := range connMap.servers[v.ID.String()] {
+			wsutil.WriteServerMessage(userConn.Conn, ws.OpText, bm)
+		}
 		serverArr = append(serverArr, v.ID.String())
 	}
 	connMap.Unlock()
 
-	go cat.ListenConnection(serverArr, chanArr, userIDStr, conn)
+	go cat.listenConnection(serverArr, chanArr, userIDStr, conn)
 
 }
 
-func (w *websocket) Sub() {
-	w.infra.Nats.Subscribe("NEW_CHANNEL_MESSAGE", func(m *nats.Msg) {
-		message := api.WebSockerMessage[usecase.SaveMessageResponse]{}
-		err := json.Unmarshal(m.Data, &message)
-		if err != nil {
-			log.Error().Msg(err.Error())
-		}
-		if c, ok := connMap.channels[message.Data.ChannelID.String()]; ok {
-			go w.broadcastChannel(message.Data, m.Data, c)
-			m.AckSync()
-		}
-	})
-}
+func (cat *Websocket) creeteVoiceRoomToken(w http.ResponseWriter, r *http.Request) {
 
-func (w *websocket) broadcastChannel(m usecase.SaveMessageResponse, mb []byte, conn map[string]*myConn) {
-	for _, c := range conn {
-		if c.userid == m.SenderID {
-			continue
-		}
-		wsutil.WriteServerMessage(c.Conn, 0x1, mb)
-	}
-}
-
-func (cat *websocket) CreeteVoiceRoomToken(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "websocket.createVoiceRoomToken")
+	defer tracer.Finish(span)
 
 	at := auth.NewAccessToken(cat.config.LiveKit.ApiKey, cat.config.LiveKit.ApiSecret)
 	grant := &auth.VideoGrant{
@@ -237,7 +196,8 @@ func (cat *websocket) CreeteVoiceRoomToken(w http.ResponseWriter, r *http.Reques
 
 	token, err := at.ToJWT()
 	if err != nil {
-		log.Error().Msg(err.Error())
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
 		api.NewHttpResponse().
 			WithCode(http.StatusInternalServerError).
 			WitMessage("internal server error").
@@ -251,23 +211,27 @@ func (cat *websocket) CreeteVoiceRoomToken(w http.ResponseWriter, r *http.Reques
 
 }
 
-func (w *websocket) ListenConnection(serverID, channelID []string, userID string, c net.Conn) {
+func (w *Websocket) listenConnection(serverID, channelID []string, userID string, c net.Conn) {
+	ctx, span := tracer.Start(context.Background(), "websocket.listenConnection")
 	defer func() {
+		tracer.Finish(span)
 		c.Close()
 	}()
 	for {
 		m, _, err := wsutil.ReadClientData(c)
 		if err != nil {
-			log.Info().Msg("failed read data")
+			tracer.SpanError(span, err)
+			log.Error().Ctx(ctx).Msg(err.Error())
 			connMap.Lock()
 			delete(connMap.users, userID)
 			for _, v := range serverID {
 				delete(connMap.servers[v], userID)
 				for _, vv := range connMap.servers[v] {
-					x := api.WebSockerMessage[any]{
-						EventID: "PAIR_CLOSED",
-						Data: map[string]string{
-							"user_id": userID,
+					x := api.WebSocketMessage[any]{
+						EventID: "USER_DISCONNECTED",
+						Data: userConnectionState{
+							UserID: userID,
+							Status: "offline",
 						},
 					}
 					xx, _ := json.Marshal(x)
@@ -283,14 +247,16 @@ func (w *websocket) ListenConnection(serverID, channelID []string, userID string
 		wm := api.WebSocketMessage[any]{}
 		err = json.Unmarshal(m, &wm)
 		if err != nil {
-			log.Error().Msg(err.Error())
+			tracer.SpanError(span, err)
+			log.Error().Ctx(ctx).Msg(err.Error())
 			continue
 		}
 		if wm.EventID == "STOP_TYPING" {
-			message := api.WebSocketMessage[TypingMessage]{}
+			message := api.WebSocketMessage[typingMessage]{}
 			err = json.Unmarshal(m, &message)
 			if err != nil {
-				log.Error().Msg(err.Error())
+				tracer.SpanError(span, err)
+				log.Error().Ctx(ctx).Msg(err.Error())
 				continue
 			}
 			for _, v := range connMap.servers[message.Data.ServerID.String()] {
@@ -299,10 +265,11 @@ func (w *websocket) ListenConnection(serverID, channelID []string, userID string
 		}
 
 		if wm.EventID == "TYPING" {
-			message := api.WebSocketMessage[TypingMessage]{}
+			message := api.WebSocketMessage[typingMessage]{}
 			err = json.Unmarshal(m, &message)
 			if err != nil {
-				log.Error().Msg(err.Error())
+				tracer.SpanError(span, err)
+				log.Error().Ctx(ctx).Msg(err.Error())
 				continue
 			}
 			for _, v := range connMap.servers[message.Data.ServerID.String()] {
@@ -310,4 +277,8 @@ func (w *websocket) ListenConnection(serverID, channelID []string, userID string
 			}
 		}
 	}
+}
+
+func (ws *Websocket) GetOnlineUserByServerID(ctx context.Context, userID string) {
+
 }

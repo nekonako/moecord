@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RiCloseLine } from 'svelte-remixicon';
 	import { ShowUserSettingModal } from './store';
-	import type { Profile, Server } from './type';
+	import type { Profile } from '$lib/service/type';
 
 	export let profile: Profile;
 

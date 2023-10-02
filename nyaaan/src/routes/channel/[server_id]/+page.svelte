@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import type { Message, Channel } from './type';
+	import type { Message } from '$lib/service/type';
 	import {
 		showCreateServerModal,
 		ShowServerSettingModal,
@@ -18,6 +18,8 @@
 
 	export let data;
 	let ws: WebSocket;
+	let wsEvent: ((this: WebSocket, ev: MessageEvent) => any) | null;
+	let wsMessageHandler: Set<(e: MessageEvent) => void> = new Set();
 
 	onMount(() => {
 		for (let i = 0; i < data.server_member.length; i++) {
@@ -32,11 +34,15 @@
 
 	function connect_ws() {
 		ws = new WebSocket('ws://localhost:4000/ws');
-		ws.onclose = function (e) {
+		ws.onclose = function () {
 			setTimeout(function () {
 				connect_ws();
 			}, 1000);
 		};
+		ws.onmessage = (e: MessageEvent) => {
+			wsMessageHandler.forEach((handler) => handler(e));
+		};
+		wsEvent = ws.onmessage;
 	}
 
 	if (browser) {
@@ -45,11 +51,14 @@
 </script>
 
 {#if $showCreateServerModal}
-	<CreateServerModal />
+	<CreateServerModal on:getListServer={(e) => (data.servers = e.detail)} />
 {/if}
 
 {#if $ShowServerSettingModal}
-	<ServerSettingModal selectedServer={data.selected_server} />
+	<ServerSettingModal
+		selectedServer={data.selected_server}
+		on:updateServer={(e) => (data.selected_server = e.detail)}
+	/>
 {/if}
 
 {#if $ShowUserSettingModal}
@@ -69,10 +78,16 @@
 			/>
 		</div>
 		<div class=" w-3/4 min-h-screen">
-			<ListMessage {messages} {ws} profile={data.profile} server={data.selected_server} />
+			<ListMessage
+				{messages}
+				{ws}
+				profile={data.profile}
+				server={data.selected_server}
+				{wsMessageHandler}
+			/>
 		</div>
 		<div class="w-1/6 bg-base-200 p-4 min-h-screen">
-			<ListMember members={data.server_member} />
+			<ListMember members={data.server_member} {wsMessageHandler} />
 		</div>
 	</div>
 {/if}

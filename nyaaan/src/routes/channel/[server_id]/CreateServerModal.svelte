@@ -1,20 +1,18 @@
 <script lang="ts">
 	import { RiCloseFill } from 'svelte-remixicon';
 	import { showCreateServerModal } from './store';
+	import { createServer, getListServer } from '$lib/service/server';
+	import { createEventDispatcher } from 'svelte';
 
 	let serverName: string;
+	const dispatch = createEventDispatcher();
 
-	async function createServer() {
-		const payload = {
-			name: serverName
-		};
-		const response = await fetch('/api/servers', {
-			body: JSON.stringify(payload),
-			method: 'POST'
-		});
-		const result = await response.json();
-		if (result.code == 200) {
+	async function handleCreateServer() {
+		const response = await createServer(fetch, { name: serverName });
+		if (response.code == 200) {
 			showCreateServerModal.set(false);
+			const response = await getListServer(fetch);
+			dispatch('getListServer', response.data);
 		}
 	}
 </script>
@@ -35,7 +33,7 @@
 		/>
 		<div class="modal-action">
 			<form method="dialog">
-				<button class="btn btn-info" on:click={() => createServer()}>Create</button>
+				<button class="btn btn-info" on:click={() => handleCreateServer()}>Create</button>
 			</form>
 		</div>
 	</div>
