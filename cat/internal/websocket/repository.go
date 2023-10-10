@@ -29,19 +29,44 @@ func (w *Websocket) getUserServer(ctx context.Context, userID ulid.ULID) ([]serv
 
 }
 
-func (w *Websocket) getUserChannel(ctx context.Context, userID ulid.ULID) ([]channel, error) {
+func (w *Websocket) getUserTextChannel(ctx context.Context, userID ulid.ULID) ([]channel, error) {
 	ctx, span := tracer.Start(ctx, "websocket.GetUserChannel")
 	defer tracer.Finish(span)
 
 	result := []channel{}
 	query := `
        SELECT
-         distinct(c.id)
+         distinct(c.id),
+	c.name
        FROM channel AS c
        LEFT JOIN channel_member AS cm ON cm.channel_id = c.id
-       WHERE (c.is_private = false OR cm.user_id = $1)
+       WHERE (c.is_private = false OR cm.user_id = $1) AND channel_type = 'text'
     `
 	err := w.infra.Postgres.SelectContext(ctx, &result, query, userID)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return result, err
+	}
+
+	return result, nil
+
+}
+
+func (w *Websocket) getChannelByID(ctx context.Context, userID, channelID ulid.ULID) (channel, error) {
+	ctx, span := tracer.Start(ctx, "websocket.GetUserChannel")
+	defer tracer.Finish(span)
+
+	result := channel{}
+	query := `
+       SELECT
+         distinct(c.id),
+	c.name
+       FROM channel AS c
+       LEFT JOIN channel_member AS cm ON cm.channel_id = c.id
+       WHERE c.id = $1 AND (c.is_private = false OR cm.user_id = $2)
+    `
+	err := w.infra.Postgres.GetContext(ctx, &result, query, channelID, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Ctx(ctx).Msg(err.Error())

@@ -17,3 +17,4 @@ export function getColor(asciiCode: number): string {
 			return "text-accent" + style;
 	}
 }
+

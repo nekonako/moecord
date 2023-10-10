@@ -1,3 +1,4 @@
+tmp/
 config/config.toml
 config/private_key.pem
 config/public_key.pem

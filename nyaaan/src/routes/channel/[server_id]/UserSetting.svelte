@@ -1,9 +1,14 @@
 <script lang="ts">
 	import { RiCloseLine } from 'svelte-remixicon';
 	import { ShowUserSettingModal } from './store';
-	import type { Profile } from '$lib/service/type';
+	import type { Profile, Server } from '$lib/service/type';
+	import { getUserProfile, updateUserProfile } from '$lib/service/user';
+	import { createEventDispatcher } from 'svelte';
+	import { getServerMember } from '$lib/service/server';
 
 	export let profile: Profile;
+	export let server: Server;
+	const dispatch = createEventDispatcher();
 
 	let file: File;
 	let serverImg: HTMLElement;
@@ -14,13 +19,13 @@
 		rBody.append('email', profile.email);
 		rBody.append('avatar', file);
 
-		const response = await fetch(`/api/profile`, {
-			method: 'PUT',
-			body: rBody
-		});
-		const result = await response.json();
-		if (result.code == 200) {
+		const response = await updateUserProfile(fetch, rBody);
+		if (response.code == 200) {
 			ShowUserSettingModal.set(false);
+			const getProfile = await getUserProfile(fetch);
+			dispatch('getProfile', getProfile.data);
+			const getMember = await getServerMember(fetch, server.id);
+			dispatch('listMember', getMember.data);
 		}
 	}
 

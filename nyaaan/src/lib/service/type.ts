@@ -30,8 +30,15 @@ export type CreateChannelRequest = {
   category_id: string
   is_private: boolean,
   type: string
-
 }
+
+export type CreateChannelCategoryRequest = {
+  name: string,
+  is_private: boolean,
+  server_id: string
+};
+
+
 
 export type Message = {
   id: string;

@@ -1,13 +1,13 @@
 import { getListServer, getServerMember } from '$lib/service/server'
 import { getListChannel } from "$lib/service/channel";
 import type { Server } from "$lib/service/type";
-import { getuserProfile } from "$lib/service/user";
+import { getUserProfile } from "$lib/service/user";
 
 
 export async function load({ fetch, params }) {
 
+  const profile = await getUserProfile(fetch);
   const servers = await getListServer(fetch);
-  const profile = await getuserProfile(fetch);
   const channels = await getListChannel(fetch, params.server_id);
 
   let selected_server: Server;

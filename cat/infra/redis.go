@@ -19,7 +19,7 @@ func newRedis(c *config.Config) *redis.Client {
 	})
 
 	if err := r.Ping(context.Background()).Err(); err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Warn().Msg(err.Error())
 		return nil
 	}
 

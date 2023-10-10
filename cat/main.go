@@ -19,6 +19,7 @@ import (
 	"github.com/nekonako/moecord/internal/message"
 	"github.com/nekonako/moecord/internal/profile"
 	"github.com/nekonako/moecord/internal/server"
+	"github.com/nekonako/moecord/internal/sfu"
 	"github.com/nekonako/moecord/internal/websocket"
 	"github.com/rs/zerolog/log"
 	otelMiddleware "go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
@@ -44,7 +45,7 @@ func main() {
 		}
 	}()
 
-	log.Info().Msg("server is running on " + config.Api.Host + ":" + fmt.Sprint(config.Api.Port))
+	log.Info().Msg("server is running on " + config.Http.Host + ":" + fmt.Sprint(config.Http.Port))
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -66,7 +67,9 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 
 	r.Use(otelMiddleware.Middleware(c.Apm.ServiceName))
 
-	ws := websocket.New(c, infra)
+	sfu := sfu.New(c)
+
+	ws := websocket.New(c, infra, sfu)
 	ws.InitRouter(r)
 
 	oauth := auth.New(c, infra)
@@ -89,10 +92,10 @@ func newHttpServer(c *config.Config, infra *infra.Infra) *http.Server {
 	methods := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"})
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf("%s:%d", c.Api.Host, c.Api.Port),
-		WriteTimeout: time.Duration(c.Api.WriteTimeout) * time.Second,
-		ReadTimeout:  time.Duration(c.Api.ReadTimeout) * time.Second,
-		IdleTimeout:  time.Duration(c.Api.IdleTimeout) * time.Second,
+		Addr:         fmt.Sprintf("%s:%d", c.Http.Host, c.Http.Port),
+		WriteTimeout: time.Duration(c.Http.WriteTimeout) * time.Second,
+		ReadTimeout:  time.Duration(c.Http.ReadTimeout) * time.Second,
+		IdleTimeout:  time.Duration(c.Http.IdleTimeout) * time.Second,
 		Handler:      handlers.CORS(origins, headers, methods)(r),
 	}
 

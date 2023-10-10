@@ -11,9 +11,16 @@
 		RemoteTrack,
 		RemoteParticipant
 	} from 'livekit-client';
+	import * as mediasoupClient from 'mediasoup-client';
+	import type { DtlsParameters, IceCandidate, IceParameters } from 'mediasoup-client/lib/types';
+	import { dev } from '$app/environment';
 
-	let localTrack: HTMLMediaElement;
-	let remoteTrack: HTMLMediaElement;
+	type MediaTrack = {
+		stream: HTMLMediaElement;
+		state?: string;
+		user?: Profile;
+		id?: string;
+	};
 
 	export let messages: Array<Message> = [];
 	export let ws: WebSocket;
@@ -24,9 +31,24 @@
 	let newMessage = Array<Message>();
 	let message: string;
 	let messageEl: HTMLElement;
-	let timer: number | undefined;
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	let mediaTracks: Array<MediaTrack> = [];
+	let ss: HTMLMediaElement;
 
 	$: typing(message);
+
+	$: ref = mediaTracks;
+
+	async function updateStream(tracks: Array<MediaTrack>) {
+		console.log(tracks, 'cok 123');
+		tracks.forEach((value) => {
+			console.log(value.stream.srcObject);
+			// setInterval(() => {
+			// 	console.log(value.stream.srcObject, "+++++++")
+			// }, 1000)
+		});
+	}
 
 	function handleMessage() {
 		wsMessageHandler.add((e) => {
@@ -113,7 +135,27 @@
 			await scrollBottom(messageEl);
 		}
 		if (channel.channel_type == 'voice') {
-			await createVoiceRoomToken();
+			try {
+				await createVoiceRoomToken();
+				const device = new mediasoupClient.Device();
+				const dtls: DtlsParameters = {
+					fingerprints: []
+				};
+				const iceCandidate: IceCandidate[] = [];
+				const iceParameter: IceParameters = {
+					usernameFragment: '12',
+					password: '123',
+					iceLite: false
+				};
+				const transport = await device.createSendTransport({
+					dtlsParameters: dtls,
+					iceCandidates: iceCandidate,
+					iceParameters: iceParameter,
+					id: 'i'
+				});
+			} catch (err) {
+				console.log(err);
+			}
 		}
 	});
 
@@ -131,31 +173,21 @@
 	});
 
 	async function createVoiceRoomToken() {
-		const response = await fetch('/api/room/token');
-		const result = await response.json();
+		try {
+			console.log('cok 123');
+			const media = await navigator.mediaDevices.getUserMedia({
+				audio: true,
+				video: true
+			});
 
-		const wsURL = 'ws://localhost:7880';
-		const token = result.data.token;
+			const ws = new WebSocket('ws://localhost:4000/ws/voice/' + $currentChannel.channel_id);
+			console.log(ws);
 
-		const room = new Room();
-		await room.connect(wsURL, token);
-
-		room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-			attachTrack(track, participant);
-		});
-
-		const tracks = await createLocalTracks({
-			audio: true,
-			video: true
-		});
-		for (let track of tracks) {
-			await room.localParticipant.publishTrack(track);
-			track.attach(localTrack);
+			console.log('start...');
+		} catch (err) {
+			console.log(err);
+			throw err;
 		}
-	}
-
-	function attachTrack(track: RemoteTrack, participant: RemoteParticipant) {
-		track.attach(remoteTrack);
 	}
 
 	function stopTyping() {
@@ -194,78 +226,92 @@
 	}
 </script>
 
-<div
-	class="flex flex-col overflow-y-auto max-h-screen min-h-screen justify-between scrollbar-hide"
-	bind:this={messageEl}
->
-	<div class="flex flex-col mb-4 px-6">
-		{#each messages as message}
-			<div class="chat chat-start">
-				<div class="chat-image avatar">
-					<div class="w-10 rounded-full">
-						<img src={message.avatar} alt="avatar" />
+{#if $currentChannel.channel_type == 'text'}
+	<div
+		class="flex flex-col overflow-y-auto max-h-screen min-h-screen justify-between scrollbar-hide"
+		bind:this={messageEl}
+	>
+		<div class="flex flex-col mb-4 px-6">
+			{#each messages as message}
+				<div class="chat chat-start">
+					<div class="chat-image avatar">
+						<div class="w-10 rounded-full">
+							<img src={message.avatar} alt="avatar" />
+						</div>
 					</div>
-				</div>
-				<div class="chat-header mb-2 mt-4">
-					<span class={getColor(message.username.toUpperCase().charCodeAt(0))}
-						>{message.username}</span
-					>
-					<time class="ml-2 text-xs opacity-50"
-						>{new Date(message.created_at).toLocaleString()}</time
-					>
-				</div>
-				{#if message.sender_id == profile.id}
-					<div class="chat-bubble chat-bubble-primary">{message.content}</div>
-				{:else}
-					<div class="chat-bubble chat-bubble-secondary">{message.content}</div>
-				{/if}
-			</div>
-		{/each}
-		{#if newMessage.length > 0}
-			<div class="fle flex row justify-between items-center mt-4">
-				<div class="w-full h-px bg-warning/10 w-full" />
-				<div class=" px-2 text-warning w-72 text-center items-center rounded-lg">new message</div>
-				<div class="w-full h-px bg-warning/10 w-full" />
-			</div>
-		{/if}
-		{#each newMessage as message}
-			<div class="chat chat-start">
-				<div class="chat-image avatar">
-					<div class="w-10 rounded-full">
-						<img src={message.avatar} alt="avatar" />
+					<div class="chat-header mb-2 mt-4">
+						<span class={getColor(message.username.toUpperCase().charCodeAt(0))}
+							>{message.username}</span
+						>
+						<time class="ml-2 text-xs opacity-50"
+							>{new Date(message.created_at).toLocaleString()}</time
+						>
 					</div>
+					{#if message.sender_id == profile.id}
+						<div class="chat-bubble chat-bubble-primary">{message.content}</div>
+					{:else}
+						<div class="chat-bubble chat-bubble-secondary">{message.content}</div>
+					{/if}
 				</div>
-				<div class="chat-header mb-2">
-					<span class={getColor(message.username.toUpperCase().charCodeAt(0))}
-						>{message.username}</span
-					>
-					<time class="text-xs opacity-50 ml-2"
-						>{new Date(message.created_at).toLocaleString()}</time
-					>
+			{/each}
+			{#if newMessage.length > 0}
+				<div class="fle flex row justify-between items-center mt-4">
+					<div class="w-full h-px bg-warning/10 w-full" />
+					<div class=" px-2 text-warning w-72 text-center items-center rounded-lg">new message</div>
+					<div class="w-full h-px bg-warning/10 w-full" />
 				</div>
-				{#if message.sender_id == profile.id}
-					<div class="chat-bubble chat-bubble-primary">{message.content}</div>
-				{:else}
-					<div class="chat-bubble chat-bubble-secondary">{message.content}</div>
-				{/if}
-			</div>
-		{/each}
-	</div>
-	<div class="sticky bottom-0 bg-base-200">
-		<div class="flex flex-row items-center m-4 bg-base-100 rounded-lg">
-			<input
-				bind:value={message}
-				type="text"
-				placeholder="Send message"
-				class="input input-lg rounded-lg focus:outline-none w-full placeholder-base-content text-base"
-			/>
-			<div
-				class="h-full flex bg-base-100 min-h-full p-4 border-l-2 border-l-base-200 rounded-lg rounded-l-none"
-			>
-				<button class="bg-base-100 h-full min-h-full text-white" on:click={() => sendMessage()}>
-					<RiSendPlane2Line size={'2em'} class="text-success" />
-				</button>
+			{/if}
+			{#each newMessage as message}
+				<div class="chat chat-start">
+					<div class="chat-image avatar">
+						<div class="w-10 rounded-full">
+							<img src={message.avatar} alt="avatar" />
+						</div>
+					</div>
+					<div class="chat-header mb-2">
+						<span class={getColor(message.username.toUpperCase().charCodeAt(0))}
+							>{message.username}</span
+						>
+						<time class="text-xs opacity-50 ml-2"
+							>{new Date(message.created_at).toLocaleString()}</time
+						>
+					</div>
+					{#if message.sender_id == profile.id}
+						<div class="chat-bubble chat-bubble-primary">{message.content}</div>
+					{:else}
+						<div class="chat-bubble chat-bubble-secondary">{message.content}</div>
+					{/if}
+				</div>
+			{/each}
+		</div>
+		<div class="sticky bottom-0 bg-base-200">
+			<div class="flex flex-row items-center m-4 bg-base-100 rounded-lg">
+				<input
+					bind:value={message}
+					type="text"
+					placeholder="Send message"
+					class="input input-lg rounded-lg focus:outline-none w-full placeholder-base-content text-base"
+				/>
+				<div
+					class="h-full flex bg-base-100 min-h-full p-4 border-l-2 border-l-base-200 rounded-lg rounded-l-none"
+				>
+					<button class="bg-base-100 h-full min-h-full text-white" on:click={() => sendMessage()}>
+						<RiSendPlane2Line size={'2em'} class="text-success" />
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>
-</div>
+{/if}
+
+{#if $currentChannel.channel_type == 'voice'}
+	<div>
+		{#each ref as mediaTrack, i}
+			<!-- <mediaTrack.element/> -->
+			<!-- {mediaTrack.element.srcObject} -->
+			<!-- {console.log(ref[i].stream, '=====')} -->
+			<video bind:this={ref[i].stream} width="400" controls autoplay playsinline />
+		{/each}
+		<!-- <video bind:this={ss} width="400" controls autoplay /> -->
+	</div>
+{/if}

@@ -7,9 +7,15 @@
 		RiSettings4Line,
 		RiCloseLine
 	} from 'svelte-remixicon';
-	import type { Channel, CreateChannelRequest, Profile, Server } from '$lib/service/type';
+	import type {
+		Channel,
+		CreateChannelCategoryRequest,
+		CreateChannelRequest,
+		Profile,
+		Server
+	} from '$lib/service/type';
 	import { ShowServerSettingModal, ShowUserSettingModal, currentChannel } from './store';
-	import { createChannel, getListChannel } from '$lib/service/channel';
+	import { createChannel, createChannelCategory, getListChannel } from '$lib/service/channel';
 
 	export let selectedServer: Server;
 	export let channels: Array<Channel>;
@@ -20,7 +26,7 @@
 	let categoryModal = false;
 	let createChannelModal = false;
 
-	let category = {
+	let category: CreateChannelCategoryRequest = {
 		name: '',
 		is_private: false,
 		server_id: selectedServer.id
@@ -48,13 +54,9 @@
 		navigator.clipboard.writeText(input.value);
 	}
 
-	async function createCategory() {
-		const response = await fetch('/api/channels/categories', {
-			body: JSON.stringify(category),
-			method: 'POST'
-		});
-		const result = await response.json();
-		if (result.code == 200) {
+	async function handleCreateChannelCategory() {
+		const response = await createChannelCategory(fetch, category);
+		if (response.code == 200) {
 			categoryModal = false;
 			const response = await getListChannel(fetch, selectedServer.id);
 			channels = response.data;
@@ -129,8 +131,9 @@
 				</span>
 				<div class="flex flex-row justify-between mt-8">
 					<div />
-					<button class="bg-success text-base-100 px-3 py-2 rounded" on:click={createCategory}
-						>Save</button
+					<button
+						class="bg-success text-base-100 px-3 py-2 rounded"
+						on:click={handleCreateChannelCategory}>Save</button
 					>
 				</div>
 			</div>

@@ -14,6 +14,7 @@ import (
 	"github.com/livekit/protocol/auth"
 	"github.com/nekonako/moecord/config"
 	"github.com/nekonako/moecord/infra"
+	"github.com/nekonako/moecord/internal/sfu"
 	"github.com/nekonako/moecord/pkg/api"
 	"github.com/nekonako/moecord/pkg/middleware"
 	"github.com/nekonako/moecord/pkg/tracer"
@@ -55,10 +56,12 @@ var (
 type Websocket struct {
 	config *config.Config
 	infra  *infra.Infra
+	sfu    *sfu.SFU
 }
 
 type channel struct {
-	ID ulid.ULID `db:"id"`
+	ID   ulid.ULID `db:"id"`
+	Name string    `db:"name"`
 }
 
 type server struct {
@@ -76,7 +79,7 @@ type userConnectionState struct {
 	Status string `json:"status"`
 }
 
-func New(c *config.Config, infra *infra.Infra) *Websocket {
+func New(c *config.Config, infra *infra.Infra, sfu *sfu.SFU) *Websocket {
 	connOnce.Do(func() {
 		connMap = &ConnMap{
 			RWMutex:  &sync.RWMutex{},
@@ -88,12 +91,62 @@ func New(c *config.Config, infra *infra.Infra) *Websocket {
 	return &Websocket{
 		infra:  infra,
 		config: c,
+		sfu:    sfu,
 	}
 }
 
 func (ws *Websocket) InitRouter(r *mux.Router) {
-	r.HandleFunc("/v1/room/token", ws.creeteVoiceRoomToken).Methods(http.MethodGet)
+
+	v1 := r.NewRoute().Subrouter()
+	v1.Use(middleware.Authentication(ws.config))
+	v1.HandleFunc("/v1/channel/{channel_id}/voice/token", ws.creeteVoiceRoomToken).Methods(http.MethodGet)
+
+	r.HandleFunc("/ws/voice/{channel_id}", ws.AcceptVoiceConnection)
 	r.HandleFunc("/ws", ws.acceptConnection)
+
+}
+
+func (cat *Websocket) AcceptVoiceConnection(w http.ResponseWriter, r *http.Request) {
+	ctx, span := tracer.Start(r.Context(), "websocket.AcceptVoiceConnection")
+	defer tracer.Finish(span)
+
+	c, err := r.Cookie("access_token")
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return
+	}
+
+	accessToken := c.Value
+	claim, err := middleware.ValidateToken(accessToken, cat.config.JWT.PrivateKey)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return
+	}
+
+	conn, _, _, err := ws.UpgradeHTTP(r, w)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return
+	}
+
+	channelID := mux.Vars(r)["channel_id"]
+	cid, _ := ulid.Parse(channelID)
+
+	userIDStr := claim["sub"].(string)
+	uid, _ := ulid.Parse(userIDStr)
+
+	channel, err := cat.getChannelByID(ctx, uid, cid)
+	if err != nil {
+		tracer.SpanError(span, err)
+		log.Error().Ctx(ctx).Msg(err.Error())
+		return
+	}
+
+	cat.sfu.CreateOrGetRoom(conn, channelID, channel.Name)
+
 }
 
 func (cat *Websocket) acceptConnection(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +178,7 @@ func (cat *Websocket) acceptConnection(w http.ResponseWriter, r *http.Request) {
 
 	userIDStr := claim["sub"].(string)
 	userID, _ := ulid.Parse(userIDStr)
-	channels, err := cat.getUserChannel(ctx, userID)
+	channels, err := cat.getUserTextChannel(ctx, userID)
 	if err != nil {
 		tracer.SpanError(span, err)
 		log.Error().Ctx(ctx).Msg(err.Error())
@@ -186,12 +239,15 @@ func (cat *Websocket) creeteVoiceRoomToken(w http.ResponseWriter, r *http.Reques
 	defer tracer.Finish(span)
 
 	at := auth.NewAccessToken(cat.config.LiveKit.ApiKey, cat.config.LiveKit.ApiSecret)
+	channelID := mux.Vars(r)["channel_id"]
+	userID := ctx.Value(middleware.Claim("user_id")).(string)
 	grant := &auth.VideoGrant{
-		RoomJoin: true,
-		Room:     "1",
+		RoomJoin:   true,
+		RoomCreate: true,
+		Room:       channelID,
 	}
 	at.AddGrant(grant).
-		SetIdentity("xxxx").
+		SetIdentity(userID).
 		SetValidFor(time.Hour)
 
 	token, err := at.ToJWT()

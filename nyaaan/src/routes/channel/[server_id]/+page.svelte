@@ -62,7 +62,12 @@
 {/if}
 
 {#if $ShowUserSettingModal}
-	<UserSettingModal profile={data.profile} />
+	<UserSettingModal
+		profile={data.profile}
+		server={data.selected_server}
+		on:getProfile={(e) => (data.profile = e.detail)}
+		on:listMember={(e) => (data.server_member = e.detail)}
+	/>
 {/if}
 
 {#if !$showCreateServerModal && !$ShowServerSettingModal}

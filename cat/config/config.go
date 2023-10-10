@@ -3,6 +3,7 @@ package config
 import (
 	"io/ioutil"
 
+	"github.com/jiyeyuran/mediasoup-go"
 	"github.com/spf13/viper"
 )
 
@@ -46,7 +47,7 @@ func readKey(filepath string) (string, error) {
 }
 
 type Config struct {
-	Api        Api            `mapstructure:"api"`
+	Http       Http           `mapstructure:"http"`
 	Postgres   Postgres       `mapstructure:"postgres"`
 	Apm        Apm            `mapstructure:"apm"`
 	Oauth      OauthProviders `mapstructure:"oauth"`
@@ -56,6 +57,7 @@ type Config struct {
 	Websocket  Websocket      `mapstructure:"websocket"`
 	JWT        JWT            `mapstructure:"jwt"`
 	LiveKit    LiveKit        `mapstructure:"livekit"`
+	MediaSoup  Mediasoup      `mapstructure:"mediasoup"`
 }
 
 type Postgres struct {
@@ -70,7 +72,7 @@ type Postgres struct {
 	ConnMaxLifeTime int    `mapstructure:"conn_max_life_time"`
 }
 
-type Api struct {
+type Http struct {
 	Env          string `mapstructure:"env"`
 	Host         string `mapstructure:"host"`
 	Port         int    `mapstructure:"port"`
@@ -138,4 +140,24 @@ type JWT struct {
 type LiveKit struct {
 	ApiKey    string `mapstructure:"api_key"`
 	ApiSecret string `mapstructure:"api_secret"`
+}
+
+type Mediasoup struct {
+	NumWorkers             int                    `mapstructure:"num_workers"`
+	WorkerPath             string                 `mapstructure:"worker_path"`
+	WebRTCTransportOptions WebRTCTransportOptions `mapstructure:"webrtc_transport_options"`
+	PlainTransportOptions  PlainTransportOptions  `mapstructure:"plain_transport_options"`
+}
+
+type WebRTCTransportOptions struct {
+	ListenIPs []mediasoup.TransportListenIp `mapstructure:"listentIps"`
+}
+
+type PlainTransportOptions struct {
+	ListenIP PlainTransportOptionListentIP `mapstructure:"listent_ip"`
+}
+
+type PlainTransportOptionListentIP struct {
+	IP         string `mapstructure:"ip"`
+	AnnounceIP string `mapstructure:"announce_ip"`
 }
